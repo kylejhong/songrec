@@ -1,29 +1,33 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { Stack } from "expo-router";
 
-import { useColorScheme } from '@/hooks/useColorScheme';
+const Layout = () => {
+    const [fonts] = useFonts({
+        'HostGrotesk-Light': require("../assets/fonts/HostGrotesk-Light.ttf"),
+        'HostGrotesk-Regular': require("../assets/fonts/HostGrotesk-Regular.ttf"),
+        'HostGrotesk-Medium': require("../assets/fonts/HostGrotesk-Medium.ttf"),
+        'HostGrotesk-SemiBold': require("../assets/fonts/HostGrotesk-SemiBold.ttf"),
+        'HostGrotesk-Bold': require("../assets/fonts/HostGrotesk-Bold.ttf"),
+        'HostGrotesk-ExtraBold': require("../assets/fonts/HostGrotesk-ExtraBold.ttf"),
+    })
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
+    if (!fonts) return null;
 
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
-  }
+    return (
+        <Stack
+            screenOptions={{
+                headerStyle: { 
+                    backgroundColor: 'rgba(0, 0, 0, 0)',
+                },
+                headerTintColor: '#ffffff',
+                headerTitleStyle: { fontFamily: 'HostGrotesk-ExtraBold', color: '#ffffff' },
+                contentStyle: { backgroundColor: "#ffffff", },
+                headerTransparent: true,
+            }}
+        >
+            <Stack.Screen name ="(tabs)" options={{ title: "song.rec"}}/>
+        </Stack>
+    );
+};
 
-  return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
-  );
-}
+export default Layout;

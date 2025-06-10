@@ -1,18 +1,16 @@
 import { Text, View } from "react-native";
-import BackgroundGradient from "../../components/BackgroundGradient";
 import HeaderBottomBorder from "../../components/HeaderBottomBorder";
 import useGlobalStyles from "../../components/useGlobalStyles";
 
-const Index = () => {
+const Friends = () => {
   const GlobalStyles = useGlobalStyles();
 
   return (
     <View style={GlobalStyles.container}>
       <HeaderBottomBorder />
-      <BackgroundGradient />
-      <Text style={GlobalStyles.text}>Homepage.</Text>
+      <Text style={GlobalStyles.text}>Friends Page.</Text>
     </View>
   );
 }
 
-export default Index;
+export default Friends;
