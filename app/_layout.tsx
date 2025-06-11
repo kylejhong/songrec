@@ -1,3 +1,4 @@
+import { BlurView } from 'expo-blur';
 import { useFonts } from 'expo-font';
 import { Stack } from "expo-router";
 
@@ -19,6 +20,9 @@ const Layout = () => {
                 headerStyle: { 
                     backgroundColor: 'rgba(0, 0, 0, 0)',
                 },
+                headerBackground: () => (
+                    <BlurView intensity={10} style={{ flex: 1, zIndex: 5 }} tint="default"/>
+                ),
                 headerTintColor: '#ffffff',
                 headerTitleStyle: { fontFamily: 'HostGrotesk-ExtraBold', color: '#ffffff' },
                 contentStyle: { backgroundColor: "#ffffff", },

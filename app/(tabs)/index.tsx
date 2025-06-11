@@ -1,6 +1,8 @@
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import BackgroundGradient from "../../components/BackgroundGradient";
 import HeaderBottomBorder from "../../components/HeaderBottomBorder";
+import SongCard from "../../components/SongCard";
+import TabBarTopBorder from "../../components/TabBarTopBorder";
 import useGlobalStyles from "../../components/useGlobalStyles";
 
 const Index = () => {
@@ -10,7 +12,8 @@ const Index = () => {
     <View style={GlobalStyles.container}>
       <HeaderBottomBorder />
       <BackgroundGradient />
-      <Text style={GlobalStyles.text}>Homepage.</Text>
+      <SongCard />
+      <TabBarTopBorder />
     </View>
   );
 }

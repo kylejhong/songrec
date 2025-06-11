@@ -1,15 +1,24 @@
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet } from 'react-native';
 
 const BackgroundGradient = () => {
     return (
-        <LinearGradient
-            // Background Linear Gradient
-            colors={['rgba(125, 67, 67, 0.8)', 'transparent']}
-            style={ styles.background }
-        />
+        <>
+            <Image
+                source={ require('../assets/images/app-gradient.png') }
+                style={ styles.image }
+            />
+            <LinearGradient
+                // Background Linear Gradient
+                colors={['rgba(82, 108, 97, 0)', 'transparent']}
+                style={ styles.background }
+            />
+        </>
     )
 }
+
+
 
 const styles = StyleSheet.create({
   background: {
@@ -18,6 +27,17 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     bottom: 0,
+    zIndex: -1,
+    opacity: 1,
+  },
+  image: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    zIndex: -1,
+    opacity: 1,
   },
 });
 
