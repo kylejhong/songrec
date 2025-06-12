@@ -17,17 +17,17 @@ const data = [
   },
   {
     id: 'unique-id-5',  // add a unique id string here
-    image: 'https://m.media-amazon.com/images/I/91BT8rF0inL.jpg',
-    username: 'Connor',
-    name: "Smokin' Out The Window",
-    artist: 'Bruno Mars, Anderson .Paak, Silk Sonic'
+    image: 'https://images.genius.com/b164f0023f5a934ffbbd29ac522e0c75.1000x1000x1.png',
+    username: 'Kyle',
+    name: "GODSTAINED",
+    artist: 'Quadeca'
   },
   {
     id: 'unique-id-3',  // add a unique id string here
-    image: 'https://m.media-amazon.com/images/I/91BT8rF0inL.jpg',
-    username: 'Connor',
-    name: "Smokin' Out The Window",
-    artist: 'Bruno Mars, Anderson .Paak, Silk Sonic'
+    image: 'https://i.scdn.co/image/ab67616d0000b273c718e0f746b0f671fd92421e',
+    username: 'Dylan',
+    name: "BELEZA PULA",
+    artist: 'Masayoshi Takanaka'
   },
 ];
 
@@ -60,14 +60,14 @@ const Index = () => {
             (index + 1) * width,
           ];
 
-          const rotate = scrollX.interpolate({
+          const scale = scrollX.interpolate({
             inputRange,
-            outputRange: ['-0deg', '0deg', '0deg'],
+            outputRange: [0.9, 1, 0.9],
             extrapolate: 'clamp',
           });
 
           return (
-            <Animated.View style={[styles.card, { transform: [{ rotate }] }]}>
+            <Animated.View style={[styles.card, { transform: [{ scale }] }]}>
               <SongCard username={item.username} name={item.name} artist={item.artist} image={item.image} />
             </Animated.View>
           );
@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   card: {
-    width,
+    width: width,
     justifyContent: 'center',
     alignItems: 'center',
     height: '100%',

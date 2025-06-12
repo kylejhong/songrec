@@ -2,11 +2,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import SmallNameCard from './SmallNameCard';
 
 const SongCard = (props : any) => {
     return (
         <View style={styles.full}>
-            <Text style={styles.p}>This week, {props.username} listened to</Text>
+            <View style={styles.nameCard}>
+                <Text style={styles.p}>This week,</Text>
+                <SmallNameCard name={props.username} image="https://media.gettyimages.com/id/1165314753/photo/born-and-bred-in-the-city.jpg?s=612x612&w=gi&k=20&c=8jzaquMGVlGaiwivR_hfZY1Wg1qJvujl18alEcvXmuU="/>
+                <Text style={styles.p}>listened to...</Text>
+            </View>
+            
             <Image
                 source={{ uri: props.image }}
                 style={ styles.blurImage }
@@ -143,6 +149,16 @@ const styles = StyleSheet.create({
         opacity: 1,
         borderRadius: 8,
         zIndex: -1,
+    },
+    nameCard: {
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 16,
+        rowGap: 4,
+        width: "100%",
+        lineHeight: 0,
     },
 });
 
