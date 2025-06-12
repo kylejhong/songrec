@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { Tabs } from "expo-router";
 
@@ -31,8 +32,28 @@ const RootLayout = () => {
         tabBarActiveTintColor: '#ffffff',
     }}
   >
-    <Tabs.Screen name="index" options={{ headerShown: false, title: 'feed' }} />
-    <Tabs.Screen name="friends" options={{ headerShown: false, title: 'friends' }} />
+    <Tabs.Screen name="index" options={{ 
+      headerShown: false, 
+      title: 'feed',
+      tabBarIcon: ({ focused, color, size }) => (
+        <Ionicons
+          name={focused ? 'home-sharp' : 'home-sharp'}
+          size={size}
+          color={color}
+        />
+      ),
+    }} />
+    <Tabs.Screen name="friends" options={{ 
+      headerShown: false, 
+      title: 'friends',
+      tabBarIcon: ({ focused, color, size }) => (
+        <Ionicons
+          name={focused ? 'person-sharp' : 'person-sharp'}
+          size={size}
+          color={color}
+        />
+      ),
+    }} />
     
   </Tabs>
 }
