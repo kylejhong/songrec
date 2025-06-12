@@ -12,7 +12,7 @@ const Index = () => {
     <View style={GlobalStyles.container}>
       <HeaderBottomBorder />
       <BackgroundGradient />
-      <SongCard />
+      <SongCard name="Smokin' Out The Window" artist="Bruno Mars, Anderson .Paak, Silk Sonic" image="https://m.media-amazon.com/images/I/91BT8rF0inL.jpg" />
       <TabBarTopBorder />
     </View>
   );

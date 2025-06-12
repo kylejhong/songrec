@@ -3,20 +3,24 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, Text, View } from 'react-native';
 
-const SongCard = () => {
+interface MyComponentProps {
+  name: string;
+  artist: string;
+  image: string;
+}
+
+const SongCard = (props: MyComponentProps) => {
     return (
         <View style={styles.full}>
             <Text style={styles.p}>This week, ___ listened to</Text>
             <BlurView style={styles.container} intensity={40} tint='dark'>
                 <Image
-                    source={{ uri: 'https://m.media-amazon.com/images/I/91BT8rF0inL.jpg' }}
+                    source={{ uri: props.image }}
                     style={ styles.backgroundImage }
                 />
-                <View style={styles.left}>
-                    <Text style={styles.h1}>Smokin' Out The Window</Text>
-                    <Text style={styles.h2}>Bruno Mars, Anderson .Paak, Silk Sonic</Text>
-                </View>
-                <View style={styles.right}>
+                <Text style={styles.h1}>{props.name}</Text>
+                <Text style={styles.h2}>{props.artist}</Text>
+                <View style={styles.imageGroup}>
                     <Image 
                         source={ require('../assets/images/record.png') }
                         style={styles.disc}
@@ -26,7 +30,7 @@ const SongCard = () => {
                         style={styles.disc}
                     />
                     <Image
-                        source={{ uri: 'https://m.media-amazon.com/images/I/91BT8rF0inL.jpg' }}
+                        source={{ uri: props.image }}
                         style={ styles.image }
                     />
                 </View>
@@ -46,15 +50,15 @@ const styles = StyleSheet.create({
     },
     container: {
         display: 'flex',
-        flexDirection: 'row',
+        flexDirection: 'column',
+        boxShadow: '5px black inset',
         borderColor: "rgba(255,255,255,0.3)",
         borderWidth: 1,
-        backgroundColor: "rgb(47, 52, 58)",
+        backgroundColor: "rgba(0, 0, 0, 1)",
         width: '100%',
         borderRadius: 8,
         overflow: 'hidden',
         padding: 16,
-        gap: 8,
     },
     left: {
         flexShrink: 1,
@@ -73,7 +77,7 @@ const styles = StyleSheet.create({
         top: 0,
         bottom: 0,
         zIndex: -1,
-        opacity: 0.5,
+        opacity: 0.3,
         borderRadius: 8,
     },
     h1: {
@@ -88,6 +92,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         margin: 0,
         color: "#cccccc",
+        marginBottom: 16,
     },
     p: {
         fontFamily: 'HostGrotesk-Regular',
@@ -99,15 +104,21 @@ const styles = StyleSheet.create({
         width: 125,
         height: 125,
         position: 'absolute',
-        right: 62.5,
+        right: 31.25,
         borderRadius: 100,
     },
     image: {
         width: 125,
         height: 125,
         zIndex: 1,
-        marginLeft: 62.5,
-    }
+    },
+    imageGroup: {
+        width: 125,
+        height: 125,
+        marginLeft: 'auto',
+        marginRight: 'auto',
+        paddingLeft: 31.25,
+    },
 });
 
 export default SongCard;

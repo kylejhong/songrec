@@ -11,7 +11,7 @@ const useGlobalStyles = () => {
             flex: 1,
             display: 'flex',
             alignItems: 'center',
-            backgroundColor: '#000000',
+            backgroundColor: '#060606',
             paddingTop: headerHeight + 10,
             paddingBottom: tabBarHeight + 10,
             padding: 16,
