@@ -46,7 +46,6 @@ const Index = () => {
         horizontal
         snapToInterval={width}
         snapToAlignment='center'
-        snapToEnd={false}
         decelerationRate="fast"
         showsHorizontalScrollIndicator={false}
         onScroll={Animated.event(
