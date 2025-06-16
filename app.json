@@ -37,6 +37,12 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f101cb39-ed0f-4953-ae6f-38db10049841"
+      }
+    },
+    "owner": "kylejhong"
   }
 }
