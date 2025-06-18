@@ -1,8 +1,33 @@
+import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import { Tabs } from "expo-router";
+import { Tabs, useRouter, useSegments } from "expo-router";
+import { useEffect } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 
 const RootLayout = () => {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const segments = useSegments();
+
+  useEffect(() => {
+      const inAuth = segments[0] === 'auth';
+
+      if (!loading) {
+          if (!user && !inAuth){
+              router.replace('/auth');
+          }
+      }
+  }, [user, loading, segments]);
+
+  if (loading) {
+      return (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              <ActivityIndicator size='large' color='#007bff' />
+          </View>
+      )
+  }
+
   return <Tabs
     screenOptions={{
         tabBarStyle: { backgroundColor: 'rgba(0,0,0,0)', 
@@ -38,7 +63,7 @@ const RootLayout = () => {
       tabBarIcon: ({ focused, color, size }) => (
         <Ionicons
           name={focused ? 'home-sharp' : 'home-sharp'}
-          size={size}
+          size={18}
           color={color}
         />
       ),
@@ -49,7 +74,7 @@ const RootLayout = () => {
       tabBarIcon: ({ focused, color, size }) => (
         <Ionicons
           name={focused ? 'person-sharp' : 'person-sharp'}
-          size={size}
+          size={18}
           color={color}
         />
       ),

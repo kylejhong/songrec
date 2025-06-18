@@ -4,7 +4,13 @@ import { StyleSheet } from "react-native";
 
 const useGlobalStyles = () => {
     const headerHeight = useHeaderHeight();
-    const tabBarHeight = useBottomTabBarHeight();
+    let tabBarHeight = 0;
+    try {
+        tabBarHeight = useBottomTabBarHeight();
+    } catch {
+        // no tab bar present, fallback to 0
+        tabBarHeight = 0;
+    }
 
     return StyleSheet.create({
         container: {

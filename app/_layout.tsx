@@ -1,3 +1,4 @@
+import { AuthProvider } from '@/contexts/AuthContext';
 import { BlurView } from 'expo-blur';
 import { useFonts } from 'expo-font';
 import { Stack } from "expo-router";
@@ -15,22 +16,25 @@ const Layout = () => {
     if (!fonts) return null;
 
     return (
-        <Stack
-            screenOptions={{
-                headerStyle: { 
-                    backgroundColor: 'rgba(0, 0, 0, 0)',
-                },
-                headerBackground: () => (
-                    <BlurView intensity={10} style={{ flex: 1, zIndex: 5 }} tint="default"/>
-                ),
-                headerTintColor: '#ffffff',
-                headerTitleStyle: { fontFamily: 'HostGrotesk-ExtraBold', color: '#ffffff' },
-                contentStyle: { backgroundColor: "#ffffff", },
-                headerTransparent: true,
-            }}
-        >
-            <Stack.Screen name ="(tabs)" options={{ title: "song.rec"}}/>
-        </Stack>
+        <AuthProvider>
+            <Stack
+                screenOptions={{
+                    headerStyle: { 
+                        backgroundColor: 'rgba(0, 0, 0, 0)',
+                    },
+                    headerBackground: () => (
+                        <BlurView intensity={10} style={{ flex: 1, zIndex: 5 }} tint="default"/>
+                    ),
+                    headerTintColor: '#ffffff',
+                    headerTitleStyle: { fontFamily: 'HostGrotesk-ExtraBold', color: '#ffffff' },
+                    contentStyle: { backgroundColor: "#ffffff", },
+                    headerTransparent: true,
+                }}
+            >
+                <Stack.Screen name ="(tabs)" options={{ title: "song.rec"}}/>
+                <Stack.Screen name ="auth" options={{ title: "song.rec", headerShown: false }}/>
+            </Stack>
+        </AuthProvider>
     );
 };
 
