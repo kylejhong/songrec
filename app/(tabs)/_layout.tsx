@@ -73,6 +73,17 @@ const RootLayout = () => {
       title: 'friends',
       tabBarIcon: ({ focused, color, size }) => (
         <Ionicons
+          name={focused ? 'people-sharp' : 'people-sharp'}
+          size={18}
+          color={color}
+        />
+      ),
+    }} />
+    <Tabs.Screen name="profile" options={{ 
+      headerShown: false, 
+      title: 'profile',
+      tabBarIcon: ({ focused, color, size }) => (
+        <Ionicons
           name={focused ? 'person-sharp' : 'person-sharp'}
           size={18}
           color={color}
