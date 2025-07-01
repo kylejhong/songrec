@@ -90,7 +90,7 @@ const AuthScreen = () => {
                     </TouchableOpacity>
                 ) : (
                     <TouchableOpacity style={styles.button} onPress={handleAuth}>
-                        <Text style={styles.buttonText}>Register</Text>
+                        <Text style={styles.buttonText}>Sign Up</Text>
                     </TouchableOpacity>
                 ) }
 
@@ -98,7 +98,7 @@ const AuthScreen = () => {
                     <View style={[styles.headerTextContainer, styles.bottom]}>
                         <Text style={styles.p}>Don't have an account?</Text>
                         <TouchableOpacity onPress={() => setIsLoggingIn(!isLoggingIn)}>
-                            <Text style={styles.link}>Register Now</Text>
+                            <Text style={styles.link}>Sign Up Now</Text>
                         </TouchableOpacity>
                     </View>
                 ) : (

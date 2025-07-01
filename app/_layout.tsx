@@ -1,9 +1,8 @@
 import { AuthProvider } from '@/contexts/AuthContext';
 import { BlurView } from 'expo-blur';
 import { useFonts } from 'expo-font';
-import { Image } from 'expo-image';
 import { Stack } from "expo-router";
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 const Layout = () => {
     const [fonts] = useFonts({
@@ -35,14 +34,6 @@ const Layout = () => {
             >
                 <Stack.Screen name ="(tabs)" options={{ 
                     title: "song.rec",
-                    headerRight: () => (
-                        <TouchableOpacity>
-                            <Image
-                                source={{ uri: "https://media.gettyimages.com/id/1165314753/photo/born-and-bred-in-the-city.jpg?s=612x612&w=gi&k=20&c=8jzaquMGVlGaiwivR_hfZY1Wg1qJvujl18alEcvXmuU=" }}
-                                style={ styles.image }
-                            />
-                        </TouchableOpacity>
-                    ),
                 }}/>
                 <Stack.Screen name ="auth" options={{ 
                     title: "song.rec", headerShown: false

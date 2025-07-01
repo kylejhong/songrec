@@ -1,12 +1,15 @@
 import React, { useRef } from 'react';
-import { Animated, Dimensions, StyleSheet, View } from "react-native";
+import { Animated, Dimensions, FlatList, StyleSheet, View } from "react-native";
 import BackgroundGradient from "../../components/BackgroundGradient";
 import HeaderBottomBorder from "../../components/HeaderBottomBorder";
 import SongCard from "../../components/SongCard";
 import TabBarTopBorder from "../../components/TabBarTopBorder";
 import useGlobalStyles from "../../components/useGlobalStyles";
 
-const { width } = Dimensions.get('window');
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const ITEM_WIDTH = SCREEN_WIDTH * 1;
+const ITEM_SPACING = (SCREEN_WIDTH - ITEM_WIDTH) / 2;
+
 const data = [
   {
     id: 'unique-id-1',  // add a unique id string here
@@ -34,6 +37,7 @@ const data = [
 const Index = () => {
   const GlobalStyles = useGlobalStyles();
   const scrollX = useRef(new Animated.Value(0)).current;
+  const flatListRef = useRef<FlatList>(null);
 
   return (
     <View style={[GlobalStyles.container, styles.centered]}>
@@ -44,7 +48,9 @@ const Index = () => {
         data={data}
         keyExtractor={(item) => item.id}
         horizontal
-        snapToInterval={width}
+        snapToInterval={SCREEN_WIDTH}
+        bounces={false}
+        overScrollMode="never"
         snapToAlignment='center'
         decelerationRate="fast"
         showsHorizontalScrollIndicator={false}
@@ -55,9 +61,9 @@ const Index = () => {
         
         renderItem={({ item, index }) => {
           const inputRange = [
-            (index - 1) * width,
-            index * width,
-            (index + 1) * width,
+            (index - 1) * SCREEN_WIDTH,
+            index * SCREEN_WIDTH,
+            (index + 1) * SCREEN_WIDTH,
           ];
 
           const scale = scrollX.interpolate({
@@ -85,7 +91,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   card: {
-    width: width,
+    width: ITEM_WIDTH,
     justifyContent: 'center',
     alignItems: 'center',
     height: '100%',
