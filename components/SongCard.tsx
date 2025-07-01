@@ -6,7 +6,7 @@ import SmallNameCard from './SmallNameCard';
 
 const SongCard = (props : any) => {
     return (
-        <View style={styles.full}>
+        <View style={[styles.full, props.user && styles.glow]}>
             <View style={styles.nameCard}>
                 <Text style={styles.p}>This week,</Text>
                 <SmallNameCard name={props.username} image="https://media.gettyimages.com/id/1165314753/photo/born-and-bred-in-the-city.jpg?s=612x612&w=gi&k=20&c=8jzaquMGVlGaiwivR_hfZY1Wg1qJvujl18alEcvXmuU="/>
@@ -55,6 +55,13 @@ const styles = StyleSheet.create({
         margin: 8,
         gap: 16,
     },
+    glow: {
+        shadowColor: 'rgba(255, 232, 164, 0.4)',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 1,
+        shadowRadius: 20,
+        elevation: 10,
+    },
     container: {
         display: 'flex',
         flexDirection: 'row',
@@ -65,8 +72,7 @@ const styles = StyleSheet.create({
         width: '90%',
         aspectRatio: 1,
         borderRadius: 8,
-        padding: 16,
-        margin: 16,
+        marginVertical: 16,
         gap: 8,
     },
     title: {

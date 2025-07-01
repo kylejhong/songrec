@@ -22,6 +22,7 @@ const useGlobalStyles = () => {
             paddingBottom: tabBarHeight + 10,
             padding: 16,
             zIndex: -2,
+            overflow: 'visible',
         },
         text: {
             color: '#ffffff',
