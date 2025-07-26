@@ -14,14 +14,13 @@ const Step1UserName = () => {
     const { username, setUsername } = useContext(OnboardingContext);
     const [error, setError] = useState<String | null>(null);
 
-    const handleAuth = async (e: React.FormEvent) => {
-      e.preventDefault();
+    const submit = async () => {
         if (!username.trim()) {
             setError('No username entered');
             return;
         }
         setError(null);
-        router.push('/auth/step2phone');
+        router.replace('/auth/step2phone');
     }
 
     return (
@@ -66,7 +65,7 @@ const Step1UserName = () => {
                     
                 </View>
                 
-                <TouchableOpacity style={styles.button} onPress={handleAuth}>
+                <TouchableOpacity style={styles.button} onPress={submit}>
                     <Text style={styles.buttonText}>Continue</Text>
                 </TouchableOpacity>
               </KeyboardAvoidingView>

@@ -47,6 +47,9 @@ const Layout = () => {
             <Stack.Screen name ="step1username" options={{ 
                     headerShown: false
                 }}/>
+            <Stack.Screen name ="step2phone" options={{ 
+                    headerShown: false
+                }}/>
             </Stack>
         </OnboardingProvider>
     );
