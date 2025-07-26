@@ -6,6 +6,7 @@ node_modules/
 .env
 .env.*
 *.swp
+frontend/.env
 
 # Expo
 .expo/

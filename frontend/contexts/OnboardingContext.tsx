@@ -1,9 +1,18 @@
 import { createContext, useState } from 'react';
 
-export const OnboardingContext = createContext<{
+type OnboardingContextType = {
     username: string;
     phoneNumber: string;
-}>({ username: "", phoneNumber: "" });
+    setUsername: (value: string) => void;
+    setPhoneNumber: (value: string) => void;
+}
+
+export const OnboardingContext = createContext<OnboardingContextType>({ 
+    username: "", 
+    phoneNumber: "",
+    setUsername: () => {},
+    setPhoneNumber: () => {},
+});
 
 
 export const OnboardingProvider = ({ children }: { children: React.ReactNode }) => {
@@ -11,7 +20,12 @@ export const OnboardingProvider = ({ children }: { children: React.ReactNode }) 
     const [phoneNumber, setPhoneNumber] = useState("");
     
     return (
-        <OnboardingContext.Provider value={{ username, phoneNumber }}>
+        <OnboardingContext.Provider value={{ 
+            username, 
+            phoneNumber,
+            setUsername,
+            setPhoneNumber,
+        }}>
             {children}
         </OnboardingContext.Provider>
     );

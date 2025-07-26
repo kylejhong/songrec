@@ -44,7 +44,7 @@ const Layout = () => {
                     headerTransparent: true,
                 }}
             >
-                <Stack.Screen name ="index" options={{ 
+            <Stack.Screen name ="step1username" options={{ 
                     headerShown: false
                 }}/>
             </Stack>
