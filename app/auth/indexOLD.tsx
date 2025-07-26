@@ -1,29 +1,39 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState, useContext } from 'react';
-import { Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import BackgroundGradient from "../../components/BackgroundGradient";
 import HeaderBottomBorder from "../../components/HeaderBottomBorder";
 import useGlobalStyles from "../../components/useGlobalStyles";
-import { OnboardingContext } from '@/contexts/OnboardingContext';
 
 const AuthScreen = () => {
     const GlobalStyles = useGlobalStyles();
     const { login, register } = useAuth();
-    const { formData, setFormData } = useContext(OnboardingContext);
     const router = useRouter();
     const [isLoggingIn, setIsLoggingIn] = useState(false);
-    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [error, setError] = useState<String | null>(null);
 
     const handleAuth = async () => {
-        if (!username.trim()) {
-            setError('No username entered');
+        if (!email.trim() || !password.trim()) {
+            setError('Email and password are required');
             return;
         }
 
-        setError(null);
+        try {
+            if (isLoggingIn) {
+                await login(email, password);
+            } else {
+                await register(email, password);
+            }
+
+            router.replace('/');
+        } catch (error: any) {
+            Alert.alert('Error', error.message);
+            return;
+        }
     }
 
     return (
@@ -31,18 +41,35 @@ const AuthScreen = () => {
             <View style={[GlobalStyles.container, styles.centered]}>
                 <HeaderBottomBorder />
                 <BackgroundGradient />
-                <Text style={styles.name}>song.rec</Text>
-                <View style={styles.headerTextContainer}>
-                    <Text style={styles.headerText}>Let's kick things off, what's your username?</Text>
-                </View>
+                { isLoggingIn ? (
+                    <View style={styles.headerTextContainer}>
+                        <Text style={styles.headerText}>Login to</Text>
+                        <Text style={styles.name}>song.rec</Text>
+                    </View>
+                ) : (
+                    <View style={styles.headerTextContainer}>
+                        <Text style={styles.headerText}>Create a new</Text>
+                        <Text style={styles.name}>song.rec</Text>
+                        <Text style={styles.headerText}>account</Text>
+                    </View>
+                ) }
                 <View style={styles.form}>
                     <TextInput 
-                        placeholder="Enter your username..." 
+                        placeholder="Email" 
                         autoCapitalize="none" 
                         placeholderTextColor="rgba(255, 255, 255, 0.5)" 
                         style={styles.textInput}
-                        value={username}
-                        onChangeText={setUsername}
+                        value={email}
+                        onChangeText={setEmail}
+                    />
+                    <TextInput 
+                        placeholder="Password" 
+                        autoCapitalize="none" 
+                        secureTextEntry={true} 
+                        placeholderTextColor="rgba(255,255,255,0.5)" 
+                        style={styles.textInput}
+                        value={password}
+                        onChangeText={setPassword}
                     />
                 </View>
 
@@ -57,9 +84,32 @@ const AuthScreen = () => {
                     </View>
                 }
                 
-                <TouchableOpacity style={styles.button} onPress={handleAuth}>
-                    <Text style={styles.buttonText}>Continue</Text>
-                </TouchableOpacity>
+                { isLoggingIn ? (
+                    <TouchableOpacity style={styles.button} onPress={handleAuth}>
+                        <Text style={styles.buttonText}>Login</Text>
+                    </TouchableOpacity>
+                ) : (
+                    <TouchableOpacity style={styles.button} onPress={handleAuth}>
+                        <Text style={styles.buttonText}>Sign Up</Text>
+                    </TouchableOpacity>
+                ) }
+
+                { isLoggingIn ? (
+                    <View style={[styles.headerTextContainer, styles.bottom]}>
+                        <Text style={styles.p}>Don't have an account?</Text>
+                        <TouchableOpacity onPress={() => setIsLoggingIn(!isLoggingIn)}>
+                            <Text style={styles.link}>Sign Up Now</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                   <View style={[styles.headerTextContainer, styles.bottom]}>
+                        <Text style={styles.p}>Already have an account?</Text>
+                        <TouchableOpacity onPress={() => setIsLoggingIn(!isLoggingIn)}>
+                            <Text style={styles.link}>Login Now</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) }
+
             </View>
         </TouchableWithoutFeedback>
     );
@@ -68,8 +118,7 @@ const AuthScreen = () => {
 const styles = StyleSheet.create({
   centered: {
     justifyContent: 'center',
-    paddingBottom: 192,
-    gap: 32,
+    gap: 42,
   },
   headerText: {
     fontFamily: 'HostGrotesk-Regular',
@@ -80,12 +129,10 @@ const styles = StyleSheet.create({
   },
   name: {
     fontFamily: 'HostGrotesk-ExtraBold',
-    fontSize: 20,
+    fontSize: 16,
     margin: 0,
     color: "#ffffff",
     textAlign: 'center',
-    position: 'absolute',
-    top: 50,
   },
   p: {
     fontFamily: 'HostGrotesk-Regular',
