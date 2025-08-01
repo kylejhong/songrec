@@ -1,10 +1,12 @@
-import { createUserWithEmailAndPassword, getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, User } from 'firebase/auth';
+import { createUserWithEmailAndPassword, getAuth, onAuthStateChanged, signInWithEmailAndPassword, signInWithPhoneNumber, signOut, User } from 'firebase/auth';
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { app } from '../firebaseConfig';
+import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
 
 type AuthContextType ={
     user: User | null,
     loading: boolean,
+    signInPhone: (phoneNumber: string, recaptchaVerifier: FirebaseRecaptchaVerifierModal) => Promise<any>;
     login: (email: string, password: string) => Promise<any>;
     register: (email: string, password: string) => Promise<any>;
     logout: () => Promise<void>;
@@ -26,6 +28,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return unsubscribe;
     }, []);
 
+    const signInPhone = async (phoneNumber: string, recaptchaVerifier: FirebaseRecaptchaVerifierModal) => {
+        return signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
+    };
+
     const login = async (email: string, password: string) => {
         return signInWithEmailAndPassword(auth, email, password);
     };
@@ -43,6 +49,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         value={{
             user,
             loading,
+            signInPhone,
             login,
             register,
             logout,

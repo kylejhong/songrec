@@ -2,31 +2,65 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useRef, useState, useContext } from 'react';
-import { Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View, KeyboardAvoidingView, Platform } from 'react-native';
+import { Alert, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View, KeyboardAvoidingView, Platform } from 'react-native';
 import BackgroundGradient from "../../components/BackgroundGradient";
 import HeaderBottomBorder from "../../components/HeaderBottomBorder";
 import useGlobalStyles from "../../components/useGlobalStyles";
 import { OnboardingContext } from '@/contexts/OnboardingContext';
 import CountryPicker, { CountryCode } from 'react-native-country-picker-modal';
+import { parsePhoneNumberFromString, CountryCode as LibCountryCode } from 'libphonenumber-js';
+import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
 
 const Step2Phone = () => {
     const GlobalStyles = useGlobalStyles();
     const router = useRouter();
-    const { username, setUsername } = useContext(OnboardingContext);
     const [error, setError] = useState<String | null>(null);
     const [countryCode, setCountryCode] = useState<CountryCode>('US');
     const [callingCode, setCallingCode] = useState('1');
-    const [nationalNumber, setNationalNumber] = useState('');
+    const [ subscriberNumber, setSubscriberNumber ] = useState('');
+    const { phoneNumber, setPhoneNumber } = useContext(OnboardingContext);
     const countryPickerRef = useRef<any>(null);
     const [pickerVisible, setPickerVisible] = useState(false);
+    const { signInPhone } = useAuth();
+    const [confirm, setConfirm] = useState(null);
+    const recaptchaVerifier = useRef(null);
 
     const submit = async () => {
-        if (!username.trim()) {
-            setError('No username entered');
+        if (!subscriberNumber.trim()) {
+            setError('No phone number entered');
             return;
         }
+
+        const phoneNumberObj = parsePhoneNumberFromString(subscriberNumber, countryCode as LibCountryCode);
+        const cleaned = subscriberNumber.replace(/[\s\-()]/g, '');
+
+        if (!/^\d+$/.test(cleaned)) {
+          setError('Phone number contains invalid characters.');
+          return;
+        }
+
+        if (cleaned.length < 6 || cleaned.length > 15) {
+            setError('Phone number seems too short or too long.');
+            return;
+        }
+
+        if (!recaptchaVerifier.current) {
+          console.error("Recaptcha verifier not ready");
+          return;
+        }
+
+        const fullPhoneNumber = `+${callingCode}${cleaned}`;
+        setPhoneNumber(fullPhoneNumber);
+        console.log(fullPhoneNumber);
         setError(null);
-        router.replace('/auth/step2phone');
+
+        try {
+            const confirmation = await signInPhone(fullPhoneNumber, recaptchaVerifier.current);
+            setConfirm(confirmation);
+        } catch (error: any) {
+            Alert.alert('Error', error.message);
+            return;
+        }
     }
 
     return (
@@ -35,80 +69,87 @@ const Step2Phone = () => {
             <HeaderBottomBorder />
             <BackgroundGradient />
 
+            <FirebaseRecaptchaVerifierModal
+              ref={recaptchaVerifier}
+            />
+
             <Text style={styles.name}>song.rec</Text>
 
-            <View style={styles.headerTextContainer}>
-                <Text style={styles.headerText}>Great! Now, what's your phone number?</Text>
-            </View>
-              
-            <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'} // 'padding' for iOS, 'height' for Android
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0} // tweak this to shift higher/lower
-            style={[styles.keyboardView]}
-            >
-                <TouchableOpacity 
-                    style={styles.countryRow}
-                    onPress={() => setPickerVisible(true)}
-                >
-                    <CountryPicker
-                        visible={pickerVisible}
-                        onClose={() => setPickerVisible(false)}
-                        countryCode={countryCode}
-                        withCallingCode
-                        withFlag
-                        withFilter
-                        withEmoji
-                        onSelect={(country) => {
-                            setCountryCode(country.cca2);
-                            setCallingCode(country.callingCode[0]);
-                        }}
-                    />
-                    {callingCode && <Text style={styles.p}>+{callingCode}</Text>}
-                    <Ionicons
-                        name={'caret-down'}
-                        size={18}
-                        color={"rgb(255, 255, 255)"}
-                    />
-                </TouchableOpacity>
-
-                <TextInput
-                    keyboardType="phone-pad"
-                    placeholder="Phone number"
-                    placeholderTextColor="#999"
-                    value={nationalNumber}
-                    onChangeText={setNationalNumber}
-                />
-
-                <View style={styles.form}>
-                    <TextInput 
-                        placeholder="Enter your username..." 
-                        autoCapitalize="none" 
-                        placeholderTextColor="rgba(255, 255, 255, 0.5)" 
-                        style={styles.textInput}
-                        value={username}
-                        onChangeText={setUsername}
-                    />
-                </View>
-
+            {!confirm ? (
+              <>
                 <View style={styles.headerTextContainer}>
-                  {error && 
-                    <>
-                      <Ionicons
-                          name={'alert-circle-outline'}
-                          size={18}
-                          color={"rgb(223, 92, 114)"}
-                      />
-
-                      <Text style={styles.errorText}>{error}</Text>
-                    </>
-                  }
-                    
+                    <Text style={styles.headerText}>Great! Now, what's your phone number?</Text>
                 </View>
-                
-                <TouchableOpacity style={styles.button} onPress={submit}>
-                    <Text style={styles.buttonText}>Continue</Text>
-                </TouchableOpacity>
-              </KeyboardAvoidingView>
+                  
+                <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'} // 'padding' for iOS, 'height' for Android
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0} // tweak this to shift higher/lower
+                style={[styles.keyboardView]}
+                >
+                    <View style={styles.phoneContainer}>
+                      <TouchableOpacity 
+                        style={styles.countryRow}
+                        onPress={() => setPickerVisible(true)}
+                      >
+                          <CountryPicker
+                              visible={pickerVisible}
+                              onClose={() => setPickerVisible(false)}
+                              countryCode={countryCode}
+                              withCallingCode
+                              withFlag
+                              withFilter
+                              withEmoji
+                              onSelect={(country) => {
+                                  setCountryCode(country.cca2);
+                                  setCallingCode(country.callingCode[0]);
+                              }}
+                          />
+                          {callingCode && <Text style={styles.p}>+{callingCode}</Text>}
+                          <Ionicons
+                              name={'caret-down'}
+                              size={18}
+                              color={"rgb(255, 255, 255)"}
+                          />
+                      </TouchableOpacity>
+
+                      <TextInput
+                          style={[styles.countryRow, styles.phoneInput]}
+                          keyboardType="phone-pad"
+                          placeholder="Enter your phone number"
+                          placeholderTextColor="#999"
+                          value={subscriberNumber}
+                          onChangeText={setSubscriberNumber}
+                      />
+                    </View>
+
+                    <View style={styles.headerTextContainer}>
+                      {error && 
+                        <>
+                          <Ionicons
+                              name={'alert-circle-outline'}
+                              size={18}
+                              color={"rgb(223, 92, 114)"}
+                          />
+
+                          <Text style={styles.errorText}>{error}</Text>
+                        </>
+                      }
+                    </View>
+                    
+                    <TouchableOpacity style={styles.button} onPress={submit}>
+                        <Text style={styles.buttonText}>Continue</Text>
+                    </TouchableOpacity>
+                  </KeyboardAvoidingView>
+              </>
+              ) : (
+                <>
+                  <Text>
+                    EOKROEKEOK
+                  </Text>
+                </>
+              )
+            }
+            
           </View>
       </TouchableWithoutFeedback>
     );
@@ -223,6 +264,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     gap: 8,
+  },
+  phoneContainer: {
+    display: 'flex',
+    flexDirection: 'row',
+    gap: 24,
+  },
+  phoneInput: {
+    color: 'white',
+    paddingLeft: 16,
+    paddingRight: 16,
   }
 });
 
