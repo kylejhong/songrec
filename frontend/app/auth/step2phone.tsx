@@ -9,7 +9,6 @@ import useGlobalStyles from "../../components/useGlobalStyles";
 import { OnboardingContext } from '@/contexts/OnboardingContext';
 import CountryPicker, { CountryCode } from 'react-native-country-picker-modal';
 import { parsePhoneNumberFromString, CountryCode as LibCountryCode } from 'libphonenumber-js';
-import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
 
 const Step2Phone = () => {
     const GlobalStyles = useGlobalStyles();
@@ -68,10 +67,6 @@ const Step2Phone = () => {
           <View style={[GlobalStyles.container, styles.centered]}>
             <HeaderBottomBorder />
             <BackgroundGradient />
-
-            <FirebaseRecaptchaVerifierModal
-              ref={recaptchaVerifier}
-            />
 
             <Text style={styles.name}>song.rec</Text>
 
