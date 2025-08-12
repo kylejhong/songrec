@@ -28,7 +28,7 @@ const Friends = () => {
     return (
       <View style={styles.screen}>
         <Text style={GlobalStyles.text}>Search for friends here</Text>
-        <FriendCard/>
+        <FriendCard state="search" username="Luca Palinka" image="https://media.gettyimages.com/id/1165314753/photo/born-and-bred-in-the-city.jpg?s=612x612&w=gi&k=20&c=8jzaquMGVlGaiwivR_hfZY1Wg1qJvujl18alEcvXmuU="/>
       </View>
     );
   }
@@ -37,6 +37,7 @@ const Friends = () => {
     return (
       <View style={styles.screen}>
         <Text style={GlobalStyles.text}>Incoming</Text>
+        <FriendCard state="incoming" username="Luca Palinka" image="https://media.gettyimages.com/id/1165314753/photo/born-and-bred-in-the-city.jpg?s=612x612&w=gi&k=20&c=8jzaquMGVlGaiwivR_hfZY1Wg1qJvujl18alEcvXmuU="/>
       </View>
     );
   }
@@ -45,6 +46,7 @@ const Friends = () => {
     return (
       <View style={styles.screen}>
         <Text style={GlobalStyles.text}>Outgoing</Text>
+        <FriendCard state="outgoing" username="Luca Palinka" image="https://media.gettyimages.com/id/1165314753/photo/born-and-bred-in-the-city.jpg?s=612x612&w=gi&k=20&c=8jzaquMGVlGaiwivR_hfZY1Wg1qJvujl18alEcvXmuU="/>
       </View>
     );
   }
@@ -96,7 +98,7 @@ const Friends = () => {
 
 const styles = StyleSheet.create({
     screen: {
-      marginHorizontal: 16,
+      marginHorizontal: 8,
       display: 'flex',
       flexDirection: 'column',
       gap: 24

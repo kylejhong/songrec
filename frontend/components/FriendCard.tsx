@@ -5,18 +5,34 @@ import { Image } from 'expo-image';
 
 const FriendCard = (props: any) => {
     const GlobalStyles = useGlobalStyles();
-    
 
-    return (
-        <View style={ styles.card }>
-            <Image
-                source={{ uri: props.image }}
-                style={ styles.image }
-            />
-            <Text style={[GlobalStyles.text, styles.text]}>
-                <Text style={styles.boldText}>{`${props.username} `}</Text>
-                requested to follow you.</Text>
-            <View style={styles.buttonHolder}>
+    function Search() {
+        return (
+            <View style={ styles.card }>
+                <Image
+                    source={{ uri: props.image }}
+                    style={ styles.image }
+                />
+                <Text style={[GlobalStyles.text, styles.text]}>
+                    <Text style={styles.boldText}>{` ${props.username}`}</Text>
+                </Text>
+                <TouchableOpacity style={ [styles.button, styles.buttonGray] }>
+                    <Text style={ [styles.buttonText, styles.white] }>Add Friend</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    function Incoming() {
+        return (
+            <View style={ styles.card }>
+                <Image
+                    source={{ uri: props.image }}
+                    style={ styles.image }
+                />
+                <Text style={[GlobalStyles.text, styles.text]}>
+                    <Text style={styles.boldText}>{`${props.username} `}</Text>
+                    requested to follow you.</Text>
                 <TouchableOpacity style={ [styles.button, styles.buttonOrange] }>
                     <Text style={ styles.buttonText }>Accept</Text>
                 </TouchableOpacity>
@@ -24,9 +40,36 @@ const FriendCard = (props: any) => {
                     <Text style={ [styles.buttonText, styles.white] }>Reject</Text>
                 </TouchableOpacity>
             </View>
-            
-        </View>
-    )
+        );
+    }
+
+    function Outgoing() {
+        return (
+            <View style={ styles.card }>
+                <Image
+                    source={{ uri: props.image }}
+                    style={ styles.image }
+                />
+                <Text style={[GlobalStyles.text, styles.text]}>
+                    <Text style={styles.boldText}>{` ${props.username}`}</Text>
+                </Text>
+                <TouchableOpacity style={ [styles.button, styles.buttonGray] }>
+                    <Text style={ [styles.buttonText, styles.white] }>Requested</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    switch (props.state) {
+    case 'search':
+        return Search();
+    case 'incoming':
+        return Incoming();
+    case 'outgoing':
+        return Outgoing();
+    default:
+        return Incoming(); // or some default behavior
+    }
 }
 
 const styles = StyleSheet.create({
@@ -35,32 +78,27 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         width: "100%",
-        margin: 8,
-        gap: 16,
+        gap: 8,
     },
     text: {
         flexShrink: 1,
+        flexGrow: 1,
         flexWrap: 'wrap',
+        fontSize: 14,
     },
     boldText: {
         flexShrink: 1,
         flexWrap: 'wrap',
         fontFamily: 'HostGrotesk-Bold',
+        fontSize: 14,
     },
     image: {
-        height: 48,
+        height: 40,
         aspectRatio: 1,
         borderRadius: 100,
     },
-    buttonHolder: {
-        display: 'flex',
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
     button: {
-        flexShrink: 0,
-        paddingHorizontal: 8,
+        paddingHorizontal: 12,
         paddingVertical: 4,
         borderRadius: 4,
     },
@@ -71,8 +109,9 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(255,255,255,0.15)",
     },
     buttonText: {
+        flexShrink: 0,
         color: 'black',
-        fontFamily: 'HostGrotesk-SemiBold',
+        fontFamily: 'HostGrotesk-Medium',
     },
     white: {
         color: 'white',
