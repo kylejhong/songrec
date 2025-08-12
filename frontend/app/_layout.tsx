@@ -3,8 +3,11 @@ import { BlurView } from 'expo-blur';
 import { useFonts } from 'expo-font';
 import { Stack } from "expo-router";
 import { StyleSheet } from 'react-native';
+import { Text } from 'react-native';
+import useGlobalStyles from "../components/useGlobalStyles";
 
 const Layout = () => {
+
     const [fonts] = useFonts({
         'HostGrotesk-Light': require("../assets/fonts/HostGrotesk-Light.ttf"),
         'HostGrotesk-Regular': require("../assets/fonts/HostGrotesk-Regular.ttf"),
@@ -33,10 +36,16 @@ const Layout = () => {
                 }}
             >
                 <Stack.Screen name ="(tabs)" options={{ 
-                    title: "song.rec",
-                }}/>
+                    headerTitle: () => (
+                        <Text style={{ fontFamily: 'HostGrotesk-ExtraBold', fontSize: 16, fontWeight: 'bold', color: 'white'}}>
+                            week
+                            <Text style={{color: "#FFE58F"}}>.jam</Text>
+                        </Text>
+                    ),
+                }}
+                />
                 <Stack.Screen name ="auth" options={{ 
-                    title: "song.rec", headerShown: false
+                    title: "week.jam", headerShown: false
                 }}/>
             </Stack>
         </AuthProvider>

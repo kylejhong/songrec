@@ -44,12 +44,12 @@ const AuthScreen = () => {
                 { isLoggingIn ? (
                     <View style={styles.headerTextContainer}>
                         <Text style={styles.headerText}>Login to</Text>
-                        <Text style={styles.name}>song.rec</Text>
+                        <Text style={styles.name}>week.jam</Text>
                     </View>
                 ) : (
                     <View style={styles.headerTextContainer}>
                         <Text style={styles.headerText}>Create a new</Text>
-                        <Text style={styles.name}>song.rec</Text>
+                        <Text style={styles.name}>week.jam</Text>
                         <Text style={styles.headerText}>account</Text>
                     </View>
                 ) }

@@ -29,7 +29,7 @@ const Step1UserName = () => {
               <HeaderBottomBorder />
               <BackgroundGradient />
 
-              <Text style={styles.name}>song.rec</Text>
+              <Text style={styles.name}>week.jam</Text>
               
               <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'} // 'padding' for iOS, 'height' for Android

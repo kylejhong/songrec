@@ -1,12 +1,11 @@
 import { useAuth } from '@/contexts/AuthContext';
 import React, { useRef } from 'react';
-import { Animated, Dimensions, FlatList, StyleSheet, View } from "react-native";
+import { Animated, Dimensions, FlatList, StyleSheet, View, Text } from "react-native";
 import BackgroundGradient from "../../components/BackgroundGradient";
 import HeaderBottomBorder from "../../components/HeaderBottomBorder";
 import SongCard from "../../components/SongCard";
 import TabBarTopBorder from "../../components/TabBarTopBorder";
 import useGlobalStyles from "../../components/useGlobalStyles";
-
 
 const data = [
   {
@@ -64,7 +63,6 @@ const Index = () => {
 
   return (
     <View style={[GlobalStyles.container, styles.centered,]}>
-      <HeaderBottomBorder />
       <BackgroundGradient />
       <Animated.Text style={[styles.text, styles.title, {opacity: yourSongOpacity, transform: [{ translateX: yourSongOffset }]}]}>
         -&gt; Your song this week &lt;-

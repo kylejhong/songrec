@@ -68,7 +68,7 @@ const Step2Phone = () => {
             <HeaderBottomBorder />
             <BackgroundGradient />
 
-            <Text style={styles.name}>song.rec</Text>
+            <Text style={styles.name}>week.jam</Text>
 
             {!confirm ? (
               <>

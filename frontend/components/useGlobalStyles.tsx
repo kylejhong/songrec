@@ -12,7 +12,7 @@ const useGlobalStyles = () => {
         tabBarHeight = 0;
     }
 
-    return StyleSheet.create({
+    const styles = StyleSheet.create({
         container: {
             flex: 1,
             display: 'flex',
@@ -29,6 +29,8 @@ const useGlobalStyles = () => {
             fontFamily: 'HostGrotesk-Regular',
         },
     });
+
+    return styles;
 }
 
 export default useGlobalStyles;
