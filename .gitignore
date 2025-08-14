@@ -1,5 +1,9 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
+GoogleService-Info.plist
+frontend/ios/songrec/GoogleService-Info.plist
+frontend/android/app/google-services.json
+
 # dependencies
 node_modules/
 old-backend/
@@ -8,6 +12,7 @@ backend/.env
 .env
 .env.*
 *.swp
+frontend/.env
 
 # Expo
 .expo/

@@ -12,7 +12,6 @@ const Profile = () => {
 
   return (
     <View style={GlobalStyles.container}>
-      <HeaderBottomBorder />
       <BackgroundGradient />
 
       <TouchableOpacity style={styles.button} onPress={logout}>

@@ -1,13 +1,15 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useState, useEffect } from 'react';
 import { Alert, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import BackgroundGradient from "../../components/BackgroundGradient";
 import HeaderBottomBorder from "../../components/HeaderBottomBorder";
 import useGlobalStyles from "../../components/useGlobalStyles";
 
 const AuthScreen = () => {
+    const { login: loginState } = useLocalSearchParams();
+    const loginStateBool = loginState === 'true';
     const GlobalStyles = useGlobalStyles();
     const { login, register } = useAuth();
     const router = useRouter();
@@ -15,6 +17,10 @@ const AuthScreen = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState<String | null>(null);
+
+    useEffect(() => {
+        setIsLoggingIn(loginStateBool);
+    }, [])
 
     const handleAuth = async () => {
         if (!email.trim() || !password.trim()) {
@@ -24,11 +30,19 @@ const AuthScreen = () => {
 
         try {
             if (isLoggingIn) {
-                await login(email, password);
+                const user = await login(email, password);
+                if (user.email_confirmed_at) {
+                    setError('Please confirm your email before logging in.');
+                    return;
+                }
             } else {
+                router.replace('/auth/username');
                 await register(email, password);
+                router.replace('/auth/username');
+                //setError('Check your email to confirm your account before logging in.');
             }
 
+            setError(null);
             router.replace('/');
         } catch (error: any) {
             Alert.alert('Error', error.message);
@@ -39,17 +53,16 @@ const AuthScreen = () => {
     return (
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
             <View style={[GlobalStyles.container, styles.centered]}>
-                <HeaderBottomBorder />
                 <BackgroundGradient />
                 { isLoggingIn ? (
                     <View style={styles.headerTextContainer}>
                         <Text style={styles.headerText}>Login to</Text>
-                        <Text style={styles.name}>song.rec</Text>
+                        <Text style={styles.name}>week.jam</Text>
                     </View>
                 ) : (
                     <View style={styles.headerTextContainer}>
                         <Text style={styles.headerText}>Create a new</Text>
-                        <Text style={styles.name}>song.rec</Text>
+                        <Text style={styles.name}>week.jam</Text>
                         <Text style={styles.headerText}>account</Text>
                     </View>
                 ) }

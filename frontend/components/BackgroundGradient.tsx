@@ -10,7 +10,6 @@ const BackgroundGradient = () => {
                 style={ styles.image }
             />
             <LinearGradient
-                // Background Linear Gradient
                 colors={['rgba(82, 108, 97, 0)', 'transparent']}
                 style={ styles.background }
             />
