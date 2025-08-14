@@ -2,7 +2,9 @@
 
 # dependencies
 node_modules/
+old-backend/
 
+backend/.env
 .env
 .env.*
 *.swp
