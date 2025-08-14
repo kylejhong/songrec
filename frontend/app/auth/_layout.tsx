@@ -11,7 +11,11 @@ const Layout = () => {
     const segments = useSegments();
 
     useEffect(() => {
-        const inAuth = segments[0] === 'auth';
+        let inAuth = segments[0] === 'auth';
+        console.log(segments);
+        if (segments[1] === 'username' || segments[1] === 'login') {
+            inAuth = false;
+        }
 
         if (!loading) {
             if (user && inAuth) {
@@ -55,11 +59,7 @@ const Layout = () => {
                     headerBackTitleStyle: { fontSize: 16, fontFamily: "HostGrotesk-SemiBold" },
                 }}/>
                 <Stack.Screen name ="username" options={{ 
-                    headerShown: true,
-                    headerTitle: '',
-                    headerTintColor: 'white',
-                    headerBackTitle: 'Back',
-                    headerBackTitleStyle: { fontSize: 16, fontFamily: "HostGrotesk-SemiBold" },
+                    headerShown: false,
                 }}/>
             </Stack>
         </OnboardingProvider>

@@ -11,13 +11,26 @@ import { OnboardingContext } from '@/contexts/OnboardingContext';
 const Username = () => {
     const GlobalStyles = useGlobalStyles();
     const router = useRouter();
+    const [username, setUsername] = useState('');
+    const [error, setError] = useState<String | null>(null);
+
+    const handleAuth = async () => {
+        if (!username.trim()) {
+            setError('Username is required');
+            return;
+        }
+
+        router.replace({
+          pathname: '/',
+        });
+    }
 
     return (
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
             <View style={[GlobalStyles.container, styles.centered]}>
                 <BackgroundGradient />
                 
-                <View style={styles.headerTextContainer}>
+                <View style={[styles.headerTextContainer]}>
                   <Text>
                     <Text style={styles.headerText}>Choose a</Text>
                     <Text style={{ fontFamily: 'HostGrotesk-ExtraBold', fontSize: 16, fontWeight: 'bold', color: 'white'}}>
@@ -27,25 +40,29 @@ const Username = () => {
                   </Text>
                 </View>
 
-                <View style={styles.form}>
+                <View style={[styles.form, { marginBottom: 64 }]}>
                     <TextInput 
-                        placeholder="Email" 
+                        placeholder="Username" 
                         autoCapitalize="none" 
                         placeholderTextColor="rgba(255, 255, 255, 0.5)" 
                         style={styles.textInput}
                     />
                 </View>
 
-                <View style={styles.form}>
-                  <TouchableOpacity style={styles.button} onPress={() => {
-                    router.push({
-                      pathname: '/auth/login',
-                      params: { login: 'true' },
-                    });
-                  }}>
-                      <Text style={styles.buttonText}>Login</Text>
-                  </TouchableOpacity>
-                </View>
+                { error && 
+                    <View style={styles.headerTextContainer}>
+                        <Ionicons
+                            name={'alert-circle-outline'}
+                            size={18}
+                            color={"rgb(223, 92, 114)"}
+                        />
+                        <Text style={styles.errorText}>{error}</Text>
+                    </View>
+                }
+
+                <TouchableOpacity style={styles.button} onPress={handleAuth}>
+                    <Text style={styles.buttonText}>Continue</Text>
+                </TouchableOpacity>
             </View>
         </TouchableWithoutFeedback>
     );

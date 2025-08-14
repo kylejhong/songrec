@@ -35,15 +35,19 @@ const AuthScreen = () => {
                     setError('Please confirm your email before logging in.');
                     return;
                 }
+                setError(null);
+                router.replace('/');
             } else {
-                router.replace('/auth/username');
-                await register(email, password);
-                router.replace('/auth/username');
-                //setError('Check your email to confirm your account before logging in.');
-            }
+                const user = await register(email, password);
 
-            setError(null);
-            router.replace('/');
+                if (user.email_confirmed_at) {
+                    setError('User already registered.');
+                    return;
+                }
+                
+                router.replace('/auth/username');
+            }
+            
         } catch (error: any) {
             Alert.alert('Error', error.message);
             return;
