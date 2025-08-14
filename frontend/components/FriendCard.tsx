@@ -6,6 +6,23 @@ import { Image } from 'expo-image';
 const FriendCard = (props: any) => {
     const GlobalStyles = useGlobalStyles();
 
+    const [buttonText, setButtonText] = useState("");
+    const [clicked, setClicked] = useState(false);
+
+    useEffect(() => {
+        switch (props.state) {
+            case 'search':
+                setButtonText("Add Friend");
+        }
+    }, [])
+
+    const addFriend = () => {
+        setButtonText("Pending");
+        setClicked(true);
+        //create a new request going from you to them, add this user to the outgoing list in react?
+        setButtonText("Requested");
+    }
+
     function Search() {
         return (
             <View style={ styles.card }>
@@ -16,8 +33,8 @@ const FriendCard = (props: any) => {
                 <Text style={[GlobalStyles.text, styles.text]}>
                     <Text style={styles.boldText}>{` ${props.username}`}</Text>
                 </Text>
-                <TouchableOpacity style={ [styles.button, styles.buttonGray] }>
-                    <Text style={ [styles.buttonText, styles.white] }>Add Friend</Text>
+                <TouchableOpacity style={ clicked ? [styles.button, styles.buttonGray] : [styles.button, styles.buttonOrange] } onPress={addFriend}>
+                    <Text style={ clicked ? [styles.buttonText, styles.white] : [styles.buttonText] }>{buttonText}</Text>
                 </TouchableOpacity>
             </View>
         );
@@ -61,14 +78,14 @@ const FriendCard = (props: any) => {
     }
 
     switch (props.state) {
-    case 'search':
-        return Search();
-    case 'incoming':
-        return Incoming();
-    case 'outgoing':
-        return Outgoing();
-    default:
-        return Incoming(); // or some default behavior
+        case 'search':
+            return Search();
+        case 'incoming':
+            return Incoming();
+        case 'outgoing':
+            return Outgoing();
+        default:
+            return Incoming(); // or some default behavior
     }
 }
 
@@ -103,7 +120,7 @@ const styles = StyleSheet.create({
         borderRadius: 4,
     },
     buttonOrange: {
-        backgroundColor: "#ffb13dff",
+        backgroundColor: "#FFE58F",
     },
     buttonGray: {
         backgroundColor: "rgba(255,255,255,0.15)",

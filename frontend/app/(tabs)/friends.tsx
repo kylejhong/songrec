@@ -6,6 +6,7 @@ import useGlobalStyles from "../../components/useGlobalStyles";
 import FriendCard from "../../components/FriendCard";
 import { TabView, SceneMap, TabBar } from 'react-native-tab-view';
 import { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
  
 const Friends = () => {
   const GlobalStyles = useGlobalStyles();
@@ -27,7 +28,6 @@ const Friends = () => {
   function Search() {
     return (
       <View style={styles.screen}>
-        <Text style={GlobalStyles.text}>Search for friends here</Text>
         <FriendCard state="search" username="Luca Palinka" image="https://media.gettyimages.com/id/1165314753/photo/born-and-bred-in-the-city.jpg?s=612x612&w=gi&k=20&c=8jzaquMGVlGaiwivR_hfZY1Wg1qJvujl18alEcvXmuU="/>
       </View>
     );
@@ -36,7 +36,6 @@ const Friends = () => {
   function Incoming() {
     return (
       <View style={styles.screen}>
-        <Text style={GlobalStyles.text}>Incoming</Text>
         <FriendCard state="incoming" username="Luca Palinka" image="https://media.gettyimages.com/id/1165314753/photo/born-and-bred-in-the-city.jpg?s=612x612&w=gi&k=20&c=8jzaquMGVlGaiwivR_hfZY1Wg1qJvujl18alEcvXmuU="/>
       </View>
     );
@@ -45,7 +44,6 @@ const Friends = () => {
   function Outgoing() {
     return (
       <View style={styles.screen}>
-        <Text style={GlobalStyles.text}>Outgoing</Text>
         <FriendCard state="outgoing" username="Luca Palinka" image="https://media.gettyimages.com/id/1165314753/photo/born-and-bred-in-the-city.jpg?s=612x612&w=gi&k=20&c=8jzaquMGVlGaiwivR_hfZY1Wg1qJvujl18alEcvXmuU="/>
       </View>
     );
@@ -80,11 +78,34 @@ const Friends = () => {
                 style={{ 
                   width: (layout.width - 64)/3,
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'flex-start',
+                  flexDirection: 'row',
+                  alignItems: 'flex-start',
+                  justifyContent: 'center',
+                  gap: 8,
                   height: 32,
                 }}
               >
+                {route.title == "Search" ? (
+                  <Ionicons
+                    name={'search'}
+                    size={16}
+                    color="white"
+                  />
+                ) : (
+                  route.title == "Incoming" ? (
+                    <Ionicons
+                      name={'archive-sharp'}
+                      size={16}
+                      color="white"
+                    />
+                  ) : (
+                    <Ionicons
+                      name={'paper-plane-sharp'}
+                      size={16}
+                      color="white"
+                    />
+                  )
+                )}
                 <Text style={{ color: "#fff", fontFamily: "HostGrotesk-Medium", textAlign: 'center', fontSize: 13 }}>{route.title}</Text>
               </TouchableOpacity>
             )}

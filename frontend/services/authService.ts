@@ -1,8 +1,19 @@
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPhoneNumber, signOut } from 'firebase/auth';
-import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
-import { auth } from '../firebaseConfig';
+import { supabase } from "../supabaseConfig";
 
-export const login = (email: string, password: string) => signInWithEmailAndPassword(auth, email, password);
-export const register = (email: string, password: string) => createUserWithEmailAndPassword(auth, email, password);
-export const signInPhone = (phoneNumber: string, recaptchaVerifier: FirebaseRecaptchaVerifierModal) => signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
-export const logout = () => signOut(auth);
+// Email/password login
+export const login = (email: string, password: string) => {
+  return supabase.auth.signInWithPassword({ email, password });
+};
+
+// Email/password registration
+export const register = (email: string, password: string) => {
+  return supabase.auth.signUp({ email, password });
+};
+
+// Phone login (OTP)
+export const signInPhone = (phoneNumber: string) => {
+  return supabase.auth.signInWithOtp({ phone: phoneNumber });
+};
+
+// Logout
+export const logout = () => supabase.auth.signOut();

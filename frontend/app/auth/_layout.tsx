@@ -3,7 +3,7 @@ import { OnboardingProvider } from '@/contexts/OnboardingContext';
 import { BlurView } from 'expo-blur';
 import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Text } from 'react-native';
 
 const Layout = () => {
     const { user, loading } = useAuth();
@@ -15,7 +15,7 @@ const Layout = () => {
 
         if (!loading) {
             if (user && inAuth) {
-                //router.replace('/');
+                router.replace('/');
             }
         }
     }, [user, loading, segments]);
@@ -44,8 +44,22 @@ const Layout = () => {
                     headerTransparent: true,
                 }}
             >
-            <Stack.Screen name ="index" options={{ 
+                <Stack.Screen name ="index" options={{ 
                     headerShown: false
+                }}/>
+                <Stack.Screen name ="login" options={{ 
+                    headerShown: true,
+                    headerTitle: '',
+                    headerTintColor: 'white',
+                    headerBackTitle: 'Back',
+                    headerBackTitleStyle: { fontSize: 16, fontFamily: "HostGrotesk-SemiBold" },
+                }}/>
+                <Stack.Screen name ="username" options={{ 
+                    headerShown: true,
+                    headerTitle: '',
+                    headerTintColor: 'white',
+                    headerBackTitle: 'Back',
+                    headerBackTitleStyle: { fontSize: 16, fontFamily: "HostGrotesk-SemiBold" },
                 }}/>
             </Stack>
         </OnboardingProvider>

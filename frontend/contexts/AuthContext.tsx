@@ -1,12 +1,11 @@
-import { createUserWithEmailAndPassword, getAuth, onAuthStateChanged, signInWithEmailAndPassword, signInWithPhoneNumber, signOut, User } from 'firebase/auth';
+import { Session, User } from "@supabase/supabase-js";
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
-import { app } from '../firebaseConfig';
-import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
+import { supabase } from '../supabaseConfig';
 
 type AuthContextType ={
-    user: User | null,
-    loading: boolean,
-    signInPhone: (phoneNumber: string, recaptchaVerifier: FirebaseRecaptchaVerifierModal) => Promise<any>;
+    user: User | null;
+    loading: boolean;
+    signInPhone: (phoneNumber: string) => Promise<any>;
     login: (email: string, password: string) => Promise<any>;
     register: (email: string, password: string) => Promise<any>;
     logout: () => Promise<void>;
@@ -17,31 +16,52 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
-    const auth = getAuth(app);
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-            setUser(firebaseUser);
+        const session = supabase.auth.getSession().then(({ data }) => {
+            setUser(data.session?.user ?? null);
             setLoading(false);
-        })
+        });
 
-        return unsubscribe;
+        const { data:authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user ?? null);
+            setLoading(false);
+        });
+
+        return () => {
+            authListener.subscription.unsubscribe();
+        }
     }, []);
 
-    const signInPhone = async (phoneNumber: string, recaptchaVerifier: FirebaseRecaptchaVerifierModal) => {
-        return signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
+    const signInPhone = async (phoneNumber: string) => {
+        return supabase.auth.signInWithOtp({ phone: phoneNumber });
     };
 
     const login = async (email: string, password: string) => {
-        return signInWithEmailAndPassword(auth, email, password);
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+        if (error) {
+            throw error;
+        }
+
+        setUser(data.user ?? null);
+
+        return data;
     };
 
     const register = async (email: string, password: string) => {
-        return createUserWithEmailAndPassword(auth, email, password);
+        const { data, error } = await supabase.auth.signUp({ email, password });
+
+        if (error) throw error;
+
+        if (data.session) setUser(data.session.user);
+
+        return data;
     };
 
     const logout = async () => {
-        return signOut(auth);
+        await supabase.auth.signOut();
+        setUser(null);
     };
 
     return (

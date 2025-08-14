@@ -8,30 +8,33 @@ import HeaderBottomBorder from "../../components/HeaderBottomBorder";
 import useGlobalStyles from "../../components/useGlobalStyles";
 import { OnboardingContext } from '@/contexts/OnboardingContext';
 
-const Welcome = () => {
+const Username = () => {
     const GlobalStyles = useGlobalStyles();
     const router = useRouter();
 
     return (
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
             <View style={[GlobalStyles.container, styles.centered]}>
-                <HeaderBottomBorder />
                 <BackgroundGradient />
                 
                 <View style={styles.headerTextContainer}>
-                    <Text style={styles.headerText}>Welcome to</Text>
+                  <Text>
+                    <Text style={styles.headerText}>Choose a</Text>
                     <Text style={{ fontFamily: 'HostGrotesk-ExtraBold', fontSize: 16, fontWeight: 'bold', color: 'white'}}>
-                        week
-                        <Text style={{color: "#FFE58F"}}>.jam</Text>
+                        <Text style={{color: "#FFE58F"}}>{` username, `}</Text>
                     </Text>
+                    <Text style={styles.headerText}>and upload a profile photo if you want!</Text>
+                  </Text>
                 </View>
 
-                
-                <Text style={[GlobalStyles.text, styles.centerText, { marginBottom: 50 }]}>
-                  {//The <Text style={styles.underline}>simplest</Text>, <Text style={styles.underline}>lowest-commitment</Text> way to share music with your friends <Text style={styles.bold}>every week</Text>.
-                  }
-                  Start your week with a brand-new playlist of music curated by your <Text style={styles.bold}>best friends</Text>.
-                </Text>
+                <View style={styles.form}>
+                    <TextInput 
+                        placeholder="Email" 
+                        autoCapitalize="none" 
+                        placeholderTextColor="rgba(255, 255, 255, 0.5)" 
+                        style={styles.textInput}
+                    />
+                </View>
 
                 <View style={styles.form}>
                   <TouchableOpacity style={styles.button} onPress={() => {
@@ -42,15 +45,6 @@ const Welcome = () => {
                   }}>
                       <Text style={styles.buttonText}>Login</Text>
                   </TouchableOpacity>
-
-                  <TouchableOpacity style={styles.button2} onPress={() => {
-                    router.push({
-                      pathname: '/auth/login',
-                      params: { login: 'false' },
-                    });
-                  }}>
-                      <Text style={[styles.buttonText, { color: 'white' }]}>Sign Up</Text>
-                  </TouchableOpacity>
                 </View>
             </View>
         </TouchableWithoutFeedback>
@@ -60,6 +54,7 @@ const Welcome = () => {
 const styles = StyleSheet.create({
   centered: {
     justifyContent: 'center',
+    alignItems: 'center',
     gap: 32,
   },
   centerText: {
@@ -137,6 +132,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 6,
     marginBottom: 0,
+    width: '100%',
   },
   button: {
     backgroundColor: 'white',
@@ -164,4 +160,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Welcome;
+export default Username;

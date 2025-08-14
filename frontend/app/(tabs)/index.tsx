@@ -6,6 +6,7 @@ import HeaderBottomBorder from "../../components/HeaderBottomBorder";
 import SongCard from "../../components/SongCard";
 import TabBarTopBorder from "../../components/TabBarTopBorder";
 import useGlobalStyles from "../../components/useGlobalStyles";
+import { sendEmailVerification, updateEmail } from 'firebase/auth';
 
 const data = [
   {
@@ -38,6 +39,7 @@ const ITEM_SPACING = (SCREEN_WIDTH - ITEM_WIDTH) / 2;
 
 const Index = () => {
   const { user } = useAuth();
+  const email = user?.email;
   const uid = user?.uid;
   const GlobalStyles = useGlobalStyles();
   const scrollX = useRef(new Animated.Value(0)).current;
