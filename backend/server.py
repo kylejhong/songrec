@@ -256,6 +256,9 @@ def hash_user(user_object):
     json_str = json.dumps(user_object, sort_keys=True)
     return hashlib.sha256(json_str.encode()).hexdigest()
 
+def test():
+    return 'prink!'
+
 # (*) == would change if scaled
 #friend_request(1, 2)
 #accept_request(1, 2)
