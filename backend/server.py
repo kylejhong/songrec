@@ -15,6 +15,26 @@ supabase: Client = create_client(url, key)
 # Sign up function to set up user id
 # Receives: User id
 # Returns: Status code
+@app.get('/create_user')
+def create_user(user_id):
+
+    response = (
+        supabase.table("users")
+        .insert({
+            "id": user_id
+        })
+        .execute()
+    )
+
+@app.get('/update_user/{col_name}/data/{data}')
+def update_user():
+
+    response_incoming_friend_ids = (
+        supabase.table("users")
+        .update({col_name: data})
+        .eq("id", user_id)
+        .execute()
+    )
 
 # Poll request function:
 # Receives: hash OR Nothing
