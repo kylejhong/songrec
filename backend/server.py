@@ -73,7 +73,7 @@ def collect_user(user_id, current_hash):
 # Returns: List of basic user objects
 # Check if friend id exists in outgoing request ids in user (*)
 @app.get('/get_recommendations')
-def get_recommendations(user_id):
+def get_recommendations(user_id, input):
 
     friend_ids = (
         supabase.table("users")
@@ -95,7 +95,11 @@ def get_recommendations(user_id):
     
     for user in response:
         if user['id'] not in friend_ids:
-            recommendations.append(user)
+            if input:
+                if input in user['username']:
+                    recommendations.append(user)
+            else:
+                recommendations.append(user)
 
     return recommendations[:5]
     
