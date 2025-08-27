@@ -50,3 +50,5 @@ yarn-error.*
 app-example
 
 .vscode/
+
+__pycache__
