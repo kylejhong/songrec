@@ -46,6 +46,7 @@ const AuthScreen = () => {
                 }
                 
                 router.replace('/auth/username');
+                console.log('usaname!');
             }
             
         } catch (error: any) {
