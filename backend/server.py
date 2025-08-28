@@ -286,4 +286,3 @@ def test():
 # (*) == would change if scaled
 #friend_request(1, 2)
 #accept_request(1, 2)
-get_recommendations(1)
