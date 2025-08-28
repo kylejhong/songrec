@@ -71,7 +71,7 @@ def collect_user(user_id, current_hash):
 @app.get('/collect_outgoing')
 def collect_outgoing(user_id):
 
-    users = (
+    outgoing = (
         supabase.table("users")
         .select("*")
         .eq("id", user_id)
@@ -80,13 +80,26 @@ def collect_outgoing(user_id):
         .data[0]["outgoing_requests"]
     )
 
+    response = (
+        supabase.table("users")
+        .select("*")
+        .execute()
+        .data
+    )
+
+    users = []
+    
+    for user in response:
+        if user['id'] in outgoing:
+            users.append(user)
+
     return users
 
 
 @app.get('/collect_incoming')
 def collect_incoming(user_id):
 
-    users = (
+    incoming = (
         supabase.table("users")
         .select("*")
         .eq("id", user_id)
@@ -94,6 +107,19 @@ def collect_incoming(user_id):
         .execute()
         .data[0]["incoming_requests"]
     )
+
+    response = (
+        supabase.table("users")
+        .select("*")
+        .execute()
+        .data
+    )
+
+    users = []
+    
+    for user in response:
+        if user['id'] in incoming:
+            users.append(user)
 
     return users
 
