@@ -68,6 +68,35 @@ def collect_user(user_id, current_hash):
 
     return user
 
+@app.get('/collect_outgoing')
+def collect_outgoing(user_id):
+
+    users = (
+        supabase.table("users")
+        .select("*")
+        .eq("id", user_id)
+        .limit(1)
+        .execute()
+        .data[0]["outgoing_requests"]
+    )
+
+    return users
+
+
+@app.get('/collect_incoming')
+def collect_incoming(user_id):
+
+    users = (
+        supabase.table("users")
+        .select("*")
+        .eq("id", user_id)
+        .limit(1)
+        .execute()
+        .data[0]["incoming_requests"]
+    )
+
+    return users
+
 # Get list of recommended friends (name, id, pfp)
 # Receives: Nothing
 # Returns: List of basic user objects
