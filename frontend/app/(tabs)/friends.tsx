@@ -1,4 +1,5 @@
 import { Keyboard, TouchableOpacity, Text, View, StyleSheet, useWindowDimensions, TextInput, TouchableWithoutFeedback, RefreshControl, ScrollView } from "react-native";
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import BackgroundGradient from "../../components/BackgroundGradient";
 import HeaderBottomBorder from "../../components/HeaderBottomBorder";
 import TabBarTopBorder from "../../components/TabBarTopBorder";
@@ -17,7 +18,7 @@ type UserData = {
   profile_picture_url: boolean,
 }
 
-function Search({ searchQuery, setSearchQuery, searchList, setSearchList, getSearch, refreshInOut }) {
+function Search({ searchQuery, setSearchQuery, searchList, setSearchList, getSearch, refreshInOut, refreshing, onRefresh, isKeyboardVisible }) {
   const GlobalStyles = useGlobalStyles();
   const { user } = useAuth();
 
@@ -26,7 +27,7 @@ function Search({ searchQuery, setSearchQuery, searchList, setSearchList, getSea
   }, [searchQuery]);
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { flex: 1 }]}>
       <View style={styles.inputWrapper}>
         <TextInput 
           placeholder="Search for a friend..." 
@@ -44,18 +45,34 @@ function Search({ searchQuery, setSearchQuery, searchList, setSearchList, getSea
         />
       </View>
       
-      {searchList && searchList.length > 0 ? (
-        searchList.map((user: UserData) => (
-          <FriendCard 
-            state="search"
-            key={user.id}
-            id={user.id}
-            username={user.username}
-            image={user.profile_picture_url}
-            onRequestSent={refreshInOut}
-          />
-        ))
-      ) : null}
+      <ScrollView
+        contentContainerStyle={{ 
+          flexGrow: 1,
+          gap: 24,
+          paddingHorizontal: 8,
+        }}
+        style={{ flex: 1 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        scrollEnabled={!isKeyboardVisible}
+        nestedScrollEnabled={true}
+        alwaysBounceVertical={true}
+        bounces={true}
+      >
+        {searchList && searchList.length > 0 ? (
+          searchList.map((user: UserData) => (
+            <FriendCard 
+              state="search"
+              key={user.id}
+              id={user.id}
+              username={user.username}
+              image={user.profile_picture_url}
+              onRequestSent={refreshInOut}
+            />
+          ))
+        ) : null}
+      </ScrollView>
     </View>
   );
 }
@@ -70,11 +87,17 @@ function Incoming({ incomingList, setIncomingList, getIncoming, refreshInOut, re
 
   return (
     <ScrollView
-      contentContainerStyle={{ flexGrow: 1 }} // makes ScrollView fill the screen
+      contentContainerStyle={{ 
+        flexGrow: 1,
+        paddingBottom: 1,
+      }} // makes ScrollView fill the screen
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
       scrollEnabled={true}
+      nestedScrollEnabled={true}
+      alwaysBounceVertical={true}
+      bounces={true}
     >
       <View style={styles.screen}>
         {incomingList && incomingList.length > 0 ? (
@@ -93,11 +116,10 @@ function Incoming({ incomingList, setIncomingList, getIncoming, refreshInOut, re
         )}
       </View>
     </ScrollView>
-    
   );
 }
 
-function Outgoing({ outgoingList, setOutgoingList, getOutgoing }) {
+function Outgoing({ outgoingList, setOutgoingList, getOutgoing, refreshing, onRefresh }) {
   const GlobalStyles = useGlobalStyles();
   const { user } = useAuth();
 
@@ -106,21 +128,35 @@ function Outgoing({ outgoingList, setOutgoingList, getOutgoing }) {
   }, []);
 
   return (
-    <View style={styles.screen}>
-      {outgoingList && outgoingList.length > 0 ? (
-        outgoingList.map((user: UserData) => (
-          <FriendCard 
-            state="outgoing"
-            key={user.id}
-            id={user.id}
-            username={user.username}
-            image={user.profile_picture_url}
-          />
-        ))
-      ) : (
-        <Text style={[GlobalStyles.text, {textAlign: "center"}]}>No outgoing requests.</Text>
-      )}
-    </View>
+    <ScrollView
+      contentContainerStyle={{ 
+        flexGrow: 1,
+        paddingBottom: 1,
+      }} // makes ScrollView fill the screen
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+      scrollEnabled={true}
+      nestedScrollEnabled={true}
+      alwaysBounceVertical={true}
+      bounces={true}
+    >
+      <View style={styles.screen}>
+        {outgoingList && outgoingList.length > 0 ? (
+          outgoingList.map((user: UserData) => (
+            <FriendCard 
+              state="outgoing"
+              key={user.id}
+              id={user.id}
+              username={user.username}
+              image={user.profile_picture_url}
+            />
+          ))
+        ) : (
+          <Text style={[GlobalStyles.text, {textAlign: "center"}]}>No outgoing requests.</Text>
+        )}
+      </View>
+    </ScrollView>
   );
 }
  
@@ -135,6 +171,28 @@ const Friends = () => {
   const [outgoingList, setOutgoingList] = useState<UserData[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => {
+        setKeyboardVisible(true);
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => {
+        setKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      keyboardDidHideListener?.remove();
+      keyboardDidShowListener?.remove();
+    };
+  }, []);
 
   useEffect(() => {
     const getData = async () => {
@@ -205,6 +263,13 @@ const Friends = () => {
     await getOutgoing();
   }
 
+  const refreshAll = async () => {
+    await getSearch();
+    setSearchQuery('');
+    await getIncoming();
+    await getOutgoing();
+  }
+
   const getSearch = async () => {
     try {
       const url = new URL(`${API_URL}/get_recommendations`);
@@ -226,94 +291,103 @@ const Friends = () => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await refreshInOut();  // your function to reload incoming/outgoing
+    await refreshAll();
     setRefreshing(false);
   }, []);
 
   const renderScene = ({ route }) => {
     switch (route.key) {
       case 'search':
-        return <Search searchQuery={searchQuery} setSearchQuery={setSearchQuery} searchList={searchList} setSearchList={setSearchList} getSearch={getSearch} refreshInOut={refreshInOut} />;
+        return <Search searchQuery={searchQuery} setSearchQuery={setSearchQuery} searchList={searchList} setSearchList={setSearchList} getSearch={getSearch} refreshInOut={refreshInOut} refreshing={refreshing} onRefresh={onRefresh} isKeyboardVisible={isKeyboardVisible} />;
       case 'incoming':
         return <Incoming incomingList={incomingList} setIncomingList={setIncomingList} getIncoming={getIncoming} refreshInOut={refreshInOut} refreshing={refreshing} onRefresh={onRefresh} />;
       case 'outgoing':
-        return <Outgoing outgoingList={outgoingList} setOutgoingList={setOutgoingList} getOutgoing={getOutgoing} />;
+        return <Outgoing outgoingList={outgoingList} setOutgoingList={setOutgoingList} getOutgoing={getOutgoing} refreshing={refreshing} onRefresh={onRefresh} />;
       default:
         return null;
     }
   };
 
-  return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <View style={GlobalStyles.container}>
-        <BackgroundGradient />
-          <TabView 
-            navigationState={{ index, routes }}
-            renderScene={renderScene}
-            onIndexChange={setIndex}
-            initialLayout={{ width: layout.width }}
-            swipeEnabled={false}
-            style={{ width: "100%", marginTop: 8 }}
-            renderTabBar={(props) => (
-            <TabBar
-              {...props}
-              style={{ 
-                backgroundColor: "transparent", 
-                height: 32, 
-                marginHorizontal: 16, 
-                marginBottom: 24,
-                borderBottomColor: 'rgba(255,255,255,0.3)',
-                borderBottomWidth: 1,
-              }}
-              indicatorStyle={{ backgroundColor: "white" }}
-              position={props.position}
-              jumpTo={props.jumpTo}
-              renderTabBarItem={({ route, onPress }) => (
-                <TouchableOpacity 
-                  onPress={onPress}
-                  style={{ 
-                    width: (layout.width - 64)/3,
-                    display: 'flex',
-                    flexDirection: 'row',
-                    alignItems: 'flex-start',
-                    justifyContent: 'center',
-                    gap: 8,
-                    height: 32,
-                  }}
-                >
-                  {route.title == "Search" ? (
+  const mainContent = (
+    <View style={GlobalStyles.container}>
+      <BackgroundGradient />
+        <TabView 
+          navigationState={{ index, routes }}
+          renderScene={renderScene}
+          onIndexChange={setIndex}
+          initialLayout={{ width: layout.width }}
+          swipeEnabled={true}
+          style={{ width: "100%", marginTop: 8 }}
+          renderTabBar={(props) => (
+          <TabBar
+            {...props}
+            style={{ 
+              backgroundColor: "transparent", 
+              height: 32, 
+              marginHorizontal: 16, 
+              marginBottom: 24,
+              borderBottomColor: 'rgba(255,255,255,0.3)',
+              borderBottomWidth: 1,
+            }}
+            indicatorStyle={{ backgroundColor: "white" }}
+            position={props.position}
+            jumpTo={props.jumpTo}
+            renderTabBarItem={({ route, onPress }) => (
+              <TouchableOpacity 
+                onPress={onPress}
+                style={{ 
+                  width: (layout.width - 64)/3,
+                  display: 'flex',
+                  flexDirection: 'row',
+                  alignItems: 'flex-start',
+                  justifyContent: 'center',
+                  gap: 8,
+                  height: 32,
+                }}
+              >
+                {route.title == "Search" ? (
+                  <Ionicons
+                    name={'search'}
+                    size={16}
+                    color="white"
+                  />
+                ) : (
+                  route.title == "Incoming" ? (
                     <Ionicons
-                      name={'search'}
+                      name={'archive-sharp'}
                       size={16}
                       color="white"
                     />
                   ) : (
-                    route.title == "Incoming" ? (
-                      <Ionicons
-                        name={'archive-sharp'}
-                        size={16}
-                        color="white"
-                      />
-                    ) : (
-                      <Ionicons
-                        name={'paper-plane-sharp'}
-                        size={16}
-                        color="white"
-                      />
-                    )
-                  )}
-                  <Text style={{ color: "#fff", fontFamily: "HostGrotesk-Medium", textAlign: 'center', fontSize: 13 }}>{route.title}</Text>
-                </TouchableOpacity>
-              )}
-            />
+                    <Ionicons
+                      name={'paper-plane-sharp'}
+                      size={16}
+                      color="white"
+                    />
+                  )
+                )}
+                <Text style={{ color: "#fff", fontFamily: "HostGrotesk-Medium", textAlign: 'center', fontSize: 13 }}>{route.title}</Text>
+              </TouchableOpacity>
             )}
-            lazy={false}
-            removeClippedSubviews={false}
           />
-        <TabBarTopBorder />
-      </View>
-    </TouchableWithoutFeedback>
+          )}
+          lazy={false}
+          removeClippedSubviews={false}
+        />
+      <TabBarTopBorder />
+    </View>
   );
+
+  return (
+    <>
+      {isKeyboardVisible && (
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={StyleSheet.absoluteFill} />
+        </TouchableWithoutFeedback>
+      )}
+      {mainContent}
+    </>
+  )
 }
 
 const styles = StyleSheet.create({
