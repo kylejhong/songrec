@@ -130,15 +130,6 @@ def collect_incoming(user_id):
 @app.get('/get_recommendations')
 def get_recommendations(user_id, input):
 
-    friend_ids = (
-        supabase.table("users")
-        .select("*")
-        .eq("id", user_id)
-        .limit(1)
-        .execute()
-        .data[0]["friends"]
-    )
-
     response = (
         supabase.table("users")
         .select("*")
@@ -149,12 +140,11 @@ def get_recommendations(user_id, input):
     recommendations = []
     
     for user in response:
-        if user['id'] not in friend_ids:
-            if input:
-                if input in user['username']:
-                    recommendations.append(user)
-            else:
+        if input:
+            if input in user['username']:
                 recommendations.append(user)
+        else:
+            recommendations.append(user)
 
     return recommendations[:5]
     
