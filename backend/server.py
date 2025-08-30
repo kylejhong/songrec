@@ -283,8 +283,8 @@ def accept_request(user_id, user_id_friend):
 
     current_incoming.remove(user_id)
     current_outgoing.remove(user_id_friend)
-    outgoing_friends.append(user_id)
-    incoming_friends.append(user_id_friend)
+    outgoing_friends.append(user_id_friend)
+    incoming_friends.append(user_id)
 
     response_incoming = (
         supabase.table("users")
@@ -341,3 +341,4 @@ def test():
 # (*) == would change if scaled
 #friend_request(1, 2)
 #accept_request(1, 2)
+print(collect_incoming('123e4567-e89b-12d3-a456-426614174008'))
