@@ -17,7 +17,16 @@ const FriendCard = (props: any) => {
     useEffect(() => {
         switch (props.state) {
             case 'search':
-                setButtonText("Add Friend");
+                if (props.friended) {
+                    setButtonText("Added");
+                    setClicked(true);
+                } else if (props.requested) {
+                    setButtonText("Requested");
+                    setClicked(true);
+                } else {
+                    setButtonText("Add Friend");
+                    setClicked(false);
+                }
                 break;
             case 'incoming':
                 setButtonText("Accept");
@@ -26,7 +35,25 @@ const FriendCard = (props: any) => {
                 setButtonText("Add Friend");
                 break;
         }
-    }, [])
+    }, [props.friended, props.requested])
+
+    const confirmPopup = (title: string, subtitle: string, confirm) => {
+        Alert.alert(
+        title,
+        subtitle,
+        [
+            {
+            text: "Cancel",
+            style: "cancel",
+            },
+            {
+            text: "Yes",
+            onPress: () => confirm(),
+            },
+        ],
+        { cancelable: true }
+        );
+    };
 
     const sendRequest = async () => {
         try {
@@ -35,17 +62,14 @@ const FriendCard = (props: any) => {
             setClicked(true);
 
             const url = new URL(`${API_URL}/friend_request`);
-            url.searchParams.append('user_id', `${id}`);
-            url.searchParams.append('user_id_friend', `${props.id}`);
+            url.searchParams.append('requester', `${id}`);
+            url.searchParams.append('accepter', `${props.id}`);
 
             const response = await fetch(url);
 
             if (!response.ok) {
                 throw new Error(`Server error: ${response.status} ${response.statusText}`);
             }
-
-            console.log(url);
-            console.log(response);
 
             props.onRequestSent();
 
@@ -63,12 +87,38 @@ const FriendCard = (props: any) => {
             setClicked(true);
 
             const url = new URL(`${API_URL}/accept_request`);
-            url.searchParams.append('user_id', `${props.id}`);
-            url.searchParams.append('user_id_friend', `${id}`);
+            url.searchParams.append('accepter', `${id}`);
+            url.searchParams.append('requester', `${props.id}`);
 
             const response = await fetch(url);
 
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status} ${response.statusText}`);
+            }
+
+            props.onRequestSent();
+        } catch (error) {
+            setButtonText("Accept");
+            setClicked(false);
+            Alert.alert('Error', error.message);
+        }
+    }
+
+    const rejectRequest = async (rescind: boolean = false) => {
+        try {
+            const url = new URL(`${API_URL}/reject_request`);
+            if (rescind) {
+                url.searchParams.append('accepter', `${props.id}`);
+                url.searchParams.append('requester', `${id}`);
+            } else {
+                url.searchParams.append('accepter', `${id}`);
+                url.searchParams.append('requester', `${props.id}`);
+            }
+
             console.log(url);
+
+            const response = await fetch(url);
+
             console.log(response + "poobly");
 
             if (!response.ok) {
@@ -93,7 +143,7 @@ const FriendCard = (props: any) => {
                 <Text style={[GlobalStyles.text, styles.text]}>
                     <Text style={styles.boldText}>{` ${props.username}`}</Text>
                 </Text>
-                <TouchableOpacity style={ clicked ? [styles.button, styles.buttonGray] : [styles.button, styles.buttonOrange] } onPress={sendRequest}>
+                <TouchableOpacity style={ clicked ? [styles.button, styles.buttonGray] : [styles.button, styles.buttonOrange] } onPress={ props.friended ?  () => {confirmPopup("Remove friend?", "", () => {})} : props.requested ? () => {confirmPopup("Reject friend request?", "", () => {rejectRequest(true)})} : sendRequest }>
                     <Text style={ clicked ? [styles.buttonText, styles.white] : [styles.buttonText] }>{buttonText}</Text>
                 </TouchableOpacity>
             </View>
@@ -113,7 +163,7 @@ const FriendCard = (props: any) => {
                 <TouchableOpacity style={ clicked ? [styles.button, styles.buttonGray] : [styles.button, styles.buttonOrange] } onPress={acceptRequest}>
                     <Text style={ clicked ? [styles.buttonText, styles.white] : [styles.buttonText] }>{buttonText}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={ [styles.button, styles.buttonGray] }>
+                <TouchableOpacity style={ [styles.button, styles.buttonGray] } onPress={ () => {confirmPopup("Reject friend request?", "", () => {rejectRequest})} }>
                     <Text style={ [styles.buttonText, styles.white] }>Reject</Text>
                 </TouchableOpacity>
             </View>
@@ -130,7 +180,7 @@ const FriendCard = (props: any) => {
                 <Text style={[GlobalStyles.text, styles.text]}>
                     <Text style={styles.boldText}>{` ${props.username}`}</Text>
                 </Text>
-                <TouchableOpacity style={ [styles.button, styles.buttonGray] }>
+                <TouchableOpacity style={ [styles.button, styles.buttonGray] } onPress={ () => {confirmPopup("Cancel Request?", "", () => {rejectRequest(true)})} }>
                     <Text style={ [styles.buttonText, styles.white] }>Requested</Text>
                 </TouchableOpacity>
             </View>
