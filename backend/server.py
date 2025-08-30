@@ -237,6 +237,46 @@ def reject_request(accepter, requester):
 
     return 1
 
+@app.get('/remove_friend')
+def remove_friend(user, friend):
+
+    user_friends = (
+        supabase.table("users")
+        .select("friends")
+        .eq("id", user)
+        .limit(1)
+        .execute()
+        .data[0]["friends"]
+    )
+
+    friend_friends = (
+        supabase.table("users")
+        .select("friends")
+        .eq("id", friend)
+        .limit(1)
+        .execute()
+        .data[0]["friends"]
+    )
+
+    user_friends.remove(friend)
+    friend_friends.remove(user)
+
+    response_user_friends = (
+        supabase.table("users")
+        .update({"friends": user_friends})
+        .eq("id", user)
+        .execute()
+    )
+
+    response_friend_friends = (
+        supabase.table("users")
+        .update({"friends": friend_friends})
+        .eq("id", friend)
+        .execute()
+    )
+
+    return 1
+
 
 @app.get('/accept_request')
 def accept_request(accepter, requester):
