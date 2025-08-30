@@ -104,6 +104,29 @@ const FriendCard = (props: any) => {
         }
     }
 
+    const removeFriend = async () => {
+        try {
+            setButtonText("Pending");
+            setClicked(true);
+
+            const url = new URL(`${API_URL}/accept_request`);
+            url.searchParams.append('user', `${id}`);
+            url.searchParams.append('friend', `${props.id}`);
+
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status} ${response.statusText}`);
+            }
+
+            props.onRequestSent();
+        } catch (error) {
+            setButtonText("Accept");
+            setClicked(false);
+            Alert.alert('Error', error.message);
+        }
+    }
+
     const rejectRequest = async (rescind: boolean = false) => {
         try {
             const url = new URL(`${API_URL}/reject_request`);
@@ -143,7 +166,7 @@ const FriendCard = (props: any) => {
                 <Text style={[GlobalStyles.text, styles.text]}>
                     <Text style={styles.boldText}>{` ${props.username}`}</Text>
                 </Text>
-                <TouchableOpacity style={ clicked ? [styles.button, styles.buttonGray] : [styles.button, styles.buttonOrange] } onPress={ props.friended ?  () => {confirmPopup("Remove friend?", "", () => {})} : props.requested ? () => {confirmPopup("Reject friend request?", "", () => {rejectRequest(true)})} : sendRequest }>
+                <TouchableOpacity style={ clicked ? [styles.button, styles.buttonGray] : [styles.button, styles.buttonOrange] } onPress={ props.friended ?  () => {confirmPopup("Remove friend?", "", () => {removeFriend()})} : props.requested ? () => {confirmPopup("Cancel request?", "", () => {rejectRequest(true)})} : sendRequest }>
                     <Text style={ clicked ? [styles.buttonText, styles.white] : [styles.buttonText] }>{buttonText}</Text>
                 </TouchableOpacity>
             </View>
