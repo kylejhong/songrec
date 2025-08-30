@@ -136,7 +136,7 @@ def get_recommendations(user_id, input):
         .eq("id", user_id)
         .limit(1)
         .execute()
-        .data[0]["friend_request_ids"]
+        .data[0]["friends"]
     )
 
     response = (
