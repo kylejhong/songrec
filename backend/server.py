@@ -168,74 +168,40 @@ def get_recommendations(user_id, input):
 # Returns: Status code
 # Poll function should occur afterward
 @app.get('/friend_request')
-def friend_request(user_id, user_id_friend):
+def friend_request(requester, accepter):
 
-    current_incoming = (
+    accepter_incoming = (
         supabase.table("users")
         .select("incoming_requests")
-        .eq("id", user_id_friend)
+        .eq("id", accepter)
         .limit(1)
         .execute()
         .data[0]["incoming_requests"]
     )
 
-    current_outgoing = (
+    requester_outgoing = (
         supabase.table("users")
         .select("outgoing_requests")
-        .eq("id", user_id)
+        .eq("id", requester)
         .limit(1)
         .execute()
         .data[0]["outgoing_requests"]
     )
 
-    incoming_friend_ids = (
-        supabase.table("users")
-        .select("friend_request_ids")
-        .eq("id", user_id_friend)
-        .limit(1)
-        .execute()
-        .data[0]["friend_request_ids"]
-    )
+    requester_outgoing.append(accepter)
+    accepter_incoming.append(requester)
 
-    outgoing_friend_ids = (
+    response_requester_outgoing = (
         supabase.table("users")
-        .select("friend_request_ids")
-        .eq("id", user_id)
-        .limit(1)
-        .execute()
-        .data[0]["friend_request_ids"]
-    )
-
-    current_incoming.append(user_id)
-    current_outgoing.append(user_id_friend)
-    outgoing_friend_ids.append(user_id)
-    incoming_friend_ids.append(user_id_friend)
-
-    response_incoming = (
-        supabase.table("users")
-        .update({"incoming_requests": current_incoming})
-        .eq("id", user_id_friend)
+        .update({"outgoing_requests": requester_outgoing})
+        .eq("id", requester)
         .execute()
     )
 
-    response_outgoing = (
+    response_accepter_incoming = (
         supabase.table("users")
-        .update({"outgoing_requests": current_outgoing})
-        .eq("id", user_id)
-        .execute()
-    )
-
-    response_incoming_friend_ids = (
-        supabase.table("users")
-        .update({"friend_request_ids": incoming_friend_ids})
-        .eq("id", user_id)
-        .execute()
-    )
-
-    response_outgoing_friend_ids = (
-        supabase.table("users")
-        .update({"friend_request_ids": outgoing_friend_ids})
-        .eq("id", user_id_friend)
+        .update({"incoming_requests": accepter_incoming})
+        .eq("id", accepter)
         .execute()
     )
 
@@ -243,82 +209,82 @@ def friend_request(user_id, user_id_friend):
 
 
 @app.get('/accept_request')
-def accept_request(user_id, user_id_friend):
+def accept_request(accepter, requester):
 
-    current_incoming = (
+    accepter_incoming = (
         supabase.table("users")
         .select("incoming_requests")
-        .eq("id", user_id_friend)
+        .eq("id", accepter)
         .limit(1)
         .execute()
         .data[0]["incoming_requests"]
     )
 
-    current_outgoing = (
+    requester_outgoing = (
         supabase.table("users")
         .select("outgoing_requests")
-        .eq("id", user_id)
+        .eq("id", requester)
         .limit(1)
         .execute()
         .data[0]["outgoing_requests"]
     )
 
-    incoming_friends = (
+    accepter_friends = (
         supabase.table("users")
         .select("friends")
-        .eq("id", user_id_friend)
+        .eq("id", accepter)
         .limit(1)
         .execute()
         .data[0]["friends"]
     )
 
-    outgoing_friends = (
+    requester_friends = (
         supabase.table("users")
         .select("friends")
-        .eq("id", user_id)
+        .eq("id", requester)
         .limit(1)
         .execute()
         .data[0]["friends"]
     )
 
-    current_incoming.remove(user_id)
-    current_outgoing.remove(user_id_friend)
-    outgoing_friends.append(user_id_friend)
-    incoming_friends.append(user_id)
+    accepter_incoming.remove(requester)
+    requester_outgoing.remove(accepter)
+    requester_friends.append(accepter)
+    accepter_friends.append(requester)
 
-    response_incoming = (
+    response_accepter_incoming = (
         supabase.table("users")
-        .update({"incoming_requests": current_incoming})
-        .eq("id", user_id_friend)
+        .update({"incoming_requests": accepter_incoming})
+        .eq("id", accepter)
         .execute()
     )
 
-    response_outgoing = (
+    response_requester_outgoing = (
         supabase.table("users")
-        .update({"outgoing_requests": current_outgoing})
-        .eq("id", user_id)
+        .update({"outgoing_requests": requester_outgoing})
+        .eq("id", requester)
         .execute()
     )
 
-    response_incoming_friend = (
+    response_accepter_friends = (
         supabase.table("users")
-        .update({"friends": incoming_friends})
-        .eq("id", user_id)
+        .update({"friends": accepter_friends})
+        .eq("id", accepter)
         .execute()
     )
 
-    response_outgoing_friend = (
+    response_requester_friends = (
         supabase.table("users")
-        .update({"friends": outgoing_friends})
-        .eq("id", user_id_friend)
+        .update({"friends": requester_friends})
+        .eq("id", requester)
         .execute()
     )
 
     return 1
 
     pass
-    # check if user_id_friend is in list (security thing)
-    # add user id to friend of user_id_friend and vice versa
+    # check if requesteris in list (security thing)
+    # add user id to friend of requesterand vice versa
     # return status code
 
 # Search for users (chunks? how work think)
@@ -341,4 +307,4 @@ def test():
 # (*) == would change if scaled
 #friend_request(1, 2)
 #accept_request(1, 2)
-print(collect_incoming('123e4567-e89b-12d3-a456-426614174008'))
+#print(collect_incoming('123e4567-e89b-12d3-a456-426614174008'))
