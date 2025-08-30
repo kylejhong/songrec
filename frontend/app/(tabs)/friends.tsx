@@ -1,12 +1,14 @@
-import { TouchableOpacity, Text, View, StyleSheet, useWindowDimensions, TextInput } from "react-native";
+import { Keyboard, TouchableOpacity, Text, View, StyleSheet, useWindowDimensions, TextInput, TouchableWithoutFeedback, RefreshControl, ScrollView } from "react-native";
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import BackgroundGradient from "../../components/BackgroundGradient";
 import HeaderBottomBorder from "../../components/HeaderBottomBorder";
 import TabBarTopBorder from "../../components/TabBarTopBorder";
 import useGlobalStyles from "../../components/useGlobalStyles";
 import FriendCard from "../../components/FriendCard";
 import { TabView, SceneMap, TabBar } from 'react-native-tab-view';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/contexts/AuthContext';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -16,33 +18,16 @@ type UserData = {
   profile_picture_url: boolean,
 }
 
-function Search({ searchQuery, setSearchQuery, userList, setUserList }) {
+function Search({ searchQuery, setSearchQuery, searchList, setSearchList, getSearch, refreshInOut, refreshing, onRefresh, isKeyboardVisible }) {
   const GlobalStyles = useGlobalStyles();
+  const { user } = useAuth();
 
   useEffect(() => {
-    const getData = async () => {
-      try {
-        const url = new URL(`${API_URL}/get_recommendations`);
-        url.searchParams.append('user_id', '1');
-        url.searchParams.append('current_hash', 'test');
-        url.searchParams.append('input', searchQuery);
-
-        const response = await fetch(url);
-        const data = await response.json();
-
-        console.log(url);
-        console.log(data);
-
-        setUserList(prevList => [...data]);
-      } catch (error) {
-        console.log(error);
-      }
-    }
-    getData();
+    getSearch();
   }, [searchQuery]);
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { flex: 1 }]}>
       <View style={styles.inputWrapper}>
         <TextInput 
           placeholder="Search for a friend..." 
@@ -60,57 +45,154 @@ function Search({ searchQuery, setSearchQuery, userList, setUserList }) {
         />
       </View>
       
-      <FriendCard state="search" username="Luca Palinka" image="https://media.gettyimages.com/id/1165314753/photo/born-and-bred-in-the-city.jpg?s=612x612&w=gi&k=20&c=8jzaquMGVlGaiwivR_hfZY1Wg1qJvujl18alEcvXmuU="/>
-      {userList && userList.length > 0 ? (
-        userList.map((user: UserData) => (
-          <FriendCard 
-            state="search"
-            key={user.id}
-            username={user.username}
-            image={user.profile_picture_url}
-          />
-        ))
-      ) : null}
+      <ScrollView
+        contentContainerStyle={{ 
+          flexGrow: 1,
+          gap: 24,
+          paddingHorizontal: 8,
+        }}
+        style={{ flex: 1 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        scrollEnabled={!isKeyboardVisible}
+        nestedScrollEnabled={true}
+        alwaysBounceVertical={true}
+        bounces={true}
+      >
+        {searchList && searchList.length > 0 ? (
+          searchList.map((user: UserData) => (
+            <FriendCard 
+              state="search"
+              key={user.id}
+              id={user.id}
+              username={user.username}
+              image={user.profile_picture_url}
+              onRequestSent={refreshInOut}
+            />
+          ))
+        ) : null}
+      </ScrollView>
     </View>
   );
 }
 
-function Incoming() {
+function Incoming({ incomingList, setIncomingList, getIncoming, refreshInOut, refreshing, onRefresh }) {
+  const GlobalStyles = useGlobalStyles();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    getIncoming();
+  }, []);
+
   return (
-    <View style={styles.screen}>
-      <FriendCard state="incoming" username="Luca Palinka" image="https://media.gettyimages.com/id/1165314753/photo/born-and-bred-in-the-city.jpg?s=612x612&w=gi&k=20&c=8jzaquMGVlGaiwivR_hfZY1Wg1qJvujl18alEcvXmuU="/>
-    </View>
+    <ScrollView
+      contentContainerStyle={{ 
+        flexGrow: 1,
+        paddingBottom: 1,
+      }} // makes ScrollView fill the screen
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+      scrollEnabled={true}
+      nestedScrollEnabled={true}
+      alwaysBounceVertical={true}
+      bounces={true}
+    >
+      <View style={styles.screen}>
+        {incomingList && incomingList.length > 0 ? (
+          incomingList.map((user: UserData) => (
+            <FriendCard 
+              state="incoming"
+              key={user.id}
+              id={user.id}
+              username={user.username}
+              image={user.profile_picture_url}
+              onRequestSent={refreshInOut}
+            />
+          ))
+        ) : (
+          <Text style={[GlobalStyles.text, {textAlign: "center"}]}>No incoming requests.</Text>
+        )}
+      </View>
+    </ScrollView>
   );
 }
 
-function Outgoing() {
+function Outgoing({ outgoingList, setOutgoingList, getOutgoing, refreshing, onRefresh }) {
+  const GlobalStyles = useGlobalStyles();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    getOutgoing();
+  }, []);
+
   return (
-    <View style={styles.screen}>
-      <FriendCard state="outgoing" username="Luca Palinka" image="https://media.gettyimages.com/id/1165314753/photo/born-and-bred-in-the-city.jpg?s=612x612&w=gi&k=20&c=8jzaquMGVlGaiwivR_hfZY1Wg1qJvujl18alEcvXmuU="/>
-    </View>
+    <ScrollView
+      contentContainerStyle={{ 
+        flexGrow: 1,
+        paddingBottom: 1,
+      }} // makes ScrollView fill the screen
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+      scrollEnabled={true}
+      nestedScrollEnabled={true}
+      alwaysBounceVertical={true}
+      bounces={true}
+    >
+      <View style={styles.screen}>
+        {outgoingList && outgoingList.length > 0 ? (
+          outgoingList.map((user: UserData) => (
+            <FriendCard 
+              state="outgoing"
+              key={user.id}
+              id={user.id}
+              username={user.username}
+              image={user.profile_picture_url}
+            />
+          ))
+        ) : (
+          <Text style={[GlobalStyles.text, {textAlign: "center"}]}>No outgoing requests.</Text>
+        )}
+      </View>
+    </ScrollView>
   );
 }
  
 const Friends = () => {
   const layout = useWindowDimensions();
   const GlobalStyles = useGlobalStyles();
+  const { user } = useAuth();
 
   const [index, setIndex] = useState(0);
-  const [userList, setUserList] = useState<UserData[]>([]);
+  const [searchList, setSearchList] = useState<UserData[]>([]);
+  const [incomingList, setIncomingList] = useState<UserData[]>([]);
+  const [outgoingList, setOutgoingList] = useState<UserData[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
 
-  const renderScene = ({ route }) => {
-    switch (route.key) {
-      case 'search':
-        return <Search searchQuery={searchQuery} setSearchQuery={setSearchQuery} userList={userList} setUserList={setUserList} />;
-      case 'incoming':
-        return <Incoming />;
-      case 'outgoing':
-        return <Outgoing />;
-      default:
-        return null;
-    }
-  };
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => {
+        setKeyboardVisible(true);
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => {
+        setKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      keyboardDidHideListener?.remove();
+      keyboardDidShowListener?.remove();
+    };
+  }, []);
 
   useEffect(() => {
     const getData = async () => {
@@ -126,7 +208,7 @@ const Friends = () => {
         console.log(url);
         console.log(data);
 
-        setUserList(prevList => [...data]);
+        setSearchList(prevList => [...data]);
       } catch (error) {
         console.log(error);
       }
@@ -140,7 +222,93 @@ const Friends = () => {
     { key: "outgoing", title: "Outgoing" },
   ]);
 
-  return (
+  const getIncoming = async () => {
+    try {
+      const url = new URL(`${API_URL}/collect_incoming`);
+      url.searchParams.append('user_id', `${user.id}`);
+
+      console.log(url);
+
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      console.log(data);
+
+      setIncomingList(prevList => [...data]);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  const getOutgoing = async () => {
+    try {
+      const url = new URL(`${API_URL}/collect_outgoing`);
+      url.searchParams.append('user_id', `${user.id}`);
+
+      console.log(url);
+
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      console.log(data);
+
+      setOutgoingList(prevList => [...data]);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  const refreshInOut = async () => {
+    await getIncoming();
+    await getOutgoing();
+  }
+
+  const refreshAll = async () => {
+    await getSearch();
+    setSearchQuery('');
+    await getIncoming();
+    await getOutgoing();
+  }
+
+  const getSearch = async () => {
+    try {
+      const url = new URL(`${API_URL}/get_recommendations`);
+      url.searchParams.append('user_id', `${user.id}`);
+      url.searchParams.append('current_hash', 'test');
+      url.searchParams.append('input', searchQuery);
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      console.log(url);
+      console.log(data);
+
+      setSearchList(prevList => [...data]);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refreshAll();
+    setRefreshing(false);
+  }, []);
+
+  const renderScene = ({ route }) => {
+    switch (route.key) {
+      case 'search':
+        return <Search searchQuery={searchQuery} setSearchQuery={setSearchQuery} searchList={searchList} setSearchList={setSearchList} getSearch={getSearch} refreshInOut={refreshInOut} refreshing={refreshing} onRefresh={onRefresh} isKeyboardVisible={isKeyboardVisible} />;
+      case 'incoming':
+        return <Incoming incomingList={incomingList} setIncomingList={setIncomingList} getIncoming={getIncoming} refreshInOut={refreshInOut} refreshing={refreshing} onRefresh={onRefresh} />;
+      case 'outgoing':
+        return <Outgoing outgoingList={outgoingList} setOutgoingList={setOutgoingList} getOutgoing={getOutgoing} refreshing={refreshing} onRefresh={onRefresh} />;
+      default:
+        return null;
+    }
+  };
+
+  const mainContent = (
     <View style={GlobalStyles.container}>
       <BackgroundGradient />
         <TabView 
@@ -148,6 +316,7 @@ const Friends = () => {
           renderScene={renderScene}
           onIndexChange={setIndex}
           initialLayout={{ width: layout.width }}
+          swipeEnabled={true}
           style={{ width: "100%", marginTop: 8 }}
           renderTabBar={(props) => (
           <TabBar
@@ -208,6 +377,17 @@ const Friends = () => {
       <TabBarTopBorder />
     </View>
   );
+
+  return (
+    <>
+      {isKeyboardVisible && (
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={StyleSheet.absoluteFill} />
+        </TouchableWithoutFeedback>
+      )}
+      {mainContent}
+    </>
+  )
 }
 
 const styles = StyleSheet.create({

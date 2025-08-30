@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react';
-import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
+import { useAuth } from '@/contexts/AuthContext';
+import { Alert, TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import useGlobalStyles from "./useGlobalStyles";
 import { Image } from 'expo-image';
 
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
 const FriendCard = (props: any) => {
     const GlobalStyles = useGlobalStyles();
+    const { user } = useAuth();
+    const id = user?.id;
 
     const [buttonText, setButtonText] = useState("");
     const [clicked, setClicked] = useState(false);
@@ -13,14 +18,69 @@ const FriendCard = (props: any) => {
         switch (props.state) {
             case 'search':
                 setButtonText("Add Friend");
+                break;
+            case 'incoming':
+                setButtonText("Accept");
+                break;
+            default:
+                setButtonText("Add Friend");
+                break;
         }
     }, [])
 
-    const addFriend = () => {
-        setButtonText("Pending");
-        setClicked(true);
-        //create a new request going from you to them, add this user to the outgoing list in react?
-        setButtonText("Requested");
+    const sendRequest = async () => {
+        try {
+            //create a new request going from you to them, add this user to the outgoing list in react?
+            setButtonText("Pending");
+            setClicked(true);
+
+            const url = new URL(`${API_URL}/friend_request`);
+            url.searchParams.append('user_id', `${id}`);
+            url.searchParams.append('user_id_friend', `${props.id}`);
+
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status} ${response.statusText}`);
+            }
+
+            console.log(url);
+            console.log(response);
+
+            props.onRequestSent();
+
+            setButtonText("Requested");
+        } catch (error) {
+            setButtonText("Add Friend");
+            setClicked(false);
+            Alert.alert('Error', error.message);
+        }
+    }
+
+    const acceptRequest = async () => {
+        try {
+            setButtonText("Pending");
+            setClicked(true);
+
+            const url = new URL(`${API_URL}/accept_request`);
+            url.searchParams.append('user_id', `${props.id}`);
+            url.searchParams.append('user_id_friend', `${id}`);
+
+            const response = await fetch(url);
+
+            console.log(url);
+            console.log(response + "poobly");
+
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status} ${response.statusText}`);
+            }
+
+            props.onRequestSent();
+        } catch (error) {
+            setButtonText("Accept");
+            setClicked(false);
+            Alert.alert('Error', error.message);
+        }
     }
 
     function Search() {
@@ -33,7 +93,7 @@ const FriendCard = (props: any) => {
                 <Text style={[GlobalStyles.text, styles.text]}>
                     <Text style={styles.boldText}>{` ${props.username}`}</Text>
                 </Text>
-                <TouchableOpacity style={ clicked ? [styles.button, styles.buttonGray] : [styles.button, styles.buttonOrange] } onPress={addFriend}>
+                <TouchableOpacity style={ clicked ? [styles.button, styles.buttonGray] : [styles.button, styles.buttonOrange] } onPress={sendRequest}>
                     <Text style={ clicked ? [styles.buttonText, styles.white] : [styles.buttonText] }>{buttonText}</Text>
                 </TouchableOpacity>
             </View>
@@ -50,8 +110,8 @@ const FriendCard = (props: any) => {
                 <Text style={[GlobalStyles.text, styles.text]}>
                     <Text style={styles.boldText}>{`${props.username} `}</Text>
                     requested to follow you.</Text>
-                <TouchableOpacity style={ [styles.button, styles.buttonOrange] }>
-                    <Text style={ styles.buttonText }>Accept</Text>
+                <TouchableOpacity style={ clicked ? [styles.button, styles.buttonGray] : [styles.button, styles.buttonOrange] } onPress={acceptRequest}>
+                    <Text style={ clicked ? [styles.buttonText, styles.white] : [styles.buttonText] }>{buttonText}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={ [styles.button, styles.buttonGray] }>
                     <Text style={ [styles.buttonText, styles.white] }>Reject</Text>
