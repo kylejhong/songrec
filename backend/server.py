@@ -197,6 +197,46 @@ def friend_request(requester, accepter):
 
     return 1
 
+@app.get('/reject_request')
+def reject_request(accepter, requester):
+
+    accepter_incoming = (
+        supabase.table("users")
+        .select("incoming_requests")
+        .eq("id", accepter)
+        .limit(1)
+        .execute()
+        .data[0]["incoming_requests"]
+    )
+
+    requester_outgoing = (
+        supabase.table("users")
+        .select("outgoing_requests")
+        .eq("id", requester)
+        .limit(1)
+        .execute()
+        .data[0]["outgoing_requests"]
+    )
+
+    requester_outgoing.remove(accepter)
+    accepter_incoming.remove(requester)
+
+    response_requester_outgoing = (
+        supabase.table("users")
+        .update({"outgoing_requests": requester_outgoing})
+        .eq("id", requester)
+        .execute()
+    )
+
+    response_accepter_incoming = (
+        supabase.table("users")
+        .update({"incoming_requests": accepter_incoming})
+        .eq("id", accepter)
+        .execute()
+    )
+
+    return 1
+
 
 @app.get('/accept_request')
 def accept_request(accepter, requester):
