@@ -15,10 +15,14 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL;
 type UserData = {
   id: number,
   username: string,
-  profile_picture_url: boolean,
+  profile_picture_url: string,
+  incoming_requests: string[],
+  friends: string[],
+  requested: boolean,
+  friended: boolean,
 }
 
-function Search({ searchQuery, setSearchQuery, searchList, setSearchList, getSearch, refreshInOut, refreshing, onRefresh, isKeyboardVisible }) {
+function Search({ searchQuery, setSearchQuery, searchList, setSearchList, getSearch, refreshAll, refreshing, onRefresh, isKeyboardVisible }) {
   const GlobalStyles = useGlobalStyles();
   const { user } = useAuth();
 
@@ -61,14 +65,16 @@ function Search({ searchQuery, setSearchQuery, searchList, setSearchList, getSea
         bounces={true}
       >
         {searchList && searchList.length > 0 ? (
-          searchList.map((user: UserData) => (
+          searchList.map((u: UserData) => (
             <FriendCard 
               state="search"
-              key={user.id}
-              id={user.id}
-              username={user.username}
-              image={user.profile_picture_url}
-              onRequestSent={refreshInOut}
+              key={u.id}
+              id={u.id}
+              username={u.username}
+              image={u.profile_picture_url}
+              onRequestSent={refreshAll}
+              friended={u.friended}
+              requested={u.requested}
             />
           ))
         ) : null}
@@ -77,7 +83,7 @@ function Search({ searchQuery, setSearchQuery, searchList, setSearchList, getSea
   );
 }
 
-function Incoming({ incomingList, setIncomingList, getIncoming, refreshInOut, refreshing, onRefresh }) {
+function Incoming({ incomingList, setIncomingList, getIncoming, refreshing, onRefresh, refreshAll }) {
   const GlobalStyles = useGlobalStyles();
   const { user } = useAuth();
 
@@ -108,7 +114,7 @@ function Incoming({ incomingList, setIncomingList, getIncoming, refreshInOut, re
               id={user.id}
               username={user.username}
               image={user.profile_picture_url}
-              onRequestSent={refreshInOut}
+              onRequestSent={refreshAll}
             />
           ))
         ) : (
@@ -119,7 +125,7 @@ function Incoming({ incomingList, setIncomingList, getIncoming, refreshInOut, re
   );
 }
 
-function Outgoing({ outgoingList, setOutgoingList, getOutgoing, refreshing, onRefresh }) {
+function Outgoing({ outgoingList, setOutgoingList, getOutgoing, refreshing, onRefresh, refreshAll }) {
   const GlobalStyles = useGlobalStyles();
   const { user } = useAuth();
 
@@ -150,6 +156,7 @@ function Outgoing({ outgoingList, setOutgoingList, getOutgoing, refreshing, onRe
               id={user.id}
               username={user.username}
               image={user.profile_picture_url}
+              onRequestSent={refreshAll}
             />
           ))
         ) : (
@@ -195,25 +202,7 @@ const Friends = () => {
   }, []);
 
   useEffect(() => {
-    const getData = async () => {
-      try {
-        const url = new URL(`${API_URL}/get_recommendations`);
-        url.searchParams.append('user_id', '1');
-        url.searchParams.append('current_hash', 'test');
-        url.searchParams.append('input', '');
-
-        const response = await fetch(url);
-        const data = await response.json();
-
-        console.log(url);
-        console.log(data);
-
-        setSearchList(prevList => [...data]);
-      } catch (error) {
-        console.log(error);
-      }
-    }
-    getData();
+    getSearch();
   }, []);
 
   const [routes] = useState([
@@ -227,12 +216,8 @@ const Friends = () => {
       const url = new URL(`${API_URL}/collect_incoming`);
       url.searchParams.append('user_id', `${user.id}`);
 
-      console.log(url);
-
       const response = await fetch(url);
       const data = await response.json();
-      
-      console.log(data);
 
       setIncomingList(prevList => [...data]);
     } catch (error) {
@@ -245,12 +230,8 @@ const Friends = () => {
       const url = new URL(`${API_URL}/collect_outgoing`);
       url.searchParams.append('user_id', `${user.id}`);
 
-      console.log(url);
-
       const response = await fetch(url);
       const data = await response.json();
-      
-      console.log(data);
 
       setOutgoingList(prevList => [...data]);
     } catch (error) {
@@ -264,8 +245,8 @@ const Friends = () => {
   }
 
   const refreshAll = async () => {
-    await getSearch();
     setSearchQuery('');
+    await getSearch();
     await getIncoming();
     await getOutgoing();
   }
@@ -280,10 +261,15 @@ const Friends = () => {
       const response = await fetch(url);
       const data = await response.json();
 
-      console.log(url);
-      console.log(data);
+      const newData = data.map((u: any) => ({
+        ...u,
+        requested: u.incoming_requests?.includes(user.id) ?? false,
+        friended: u.friends?.includes(user.id) ?? false,
+      }));
 
-      setSearchList(prevList => [...data]);
+      console.log(url);
+
+      setSearchList(newData);
     } catch (error) {
       console.log(error);
     }
@@ -298,11 +284,11 @@ const Friends = () => {
   const renderScene = ({ route }) => {
     switch (route.key) {
       case 'search':
-        return <Search searchQuery={searchQuery} setSearchQuery={setSearchQuery} searchList={searchList} setSearchList={setSearchList} getSearch={getSearch} refreshInOut={refreshInOut} refreshing={refreshing} onRefresh={onRefresh} isKeyboardVisible={isKeyboardVisible} />;
+        return <Search searchQuery={searchQuery} setSearchQuery={setSearchQuery} searchList={searchList} setSearchList={setSearchList} getSearch={getSearch} refreshAll={refreshAll} refreshing={refreshing} onRefresh={onRefresh} isKeyboardVisible={isKeyboardVisible} />;
       case 'incoming':
-        return <Incoming incomingList={incomingList} setIncomingList={setIncomingList} getIncoming={getIncoming} refreshInOut={refreshInOut} refreshing={refreshing} onRefresh={onRefresh} />;
+        return <Incoming incomingList={incomingList} setIncomingList={setIncomingList} getIncoming={getIncoming} refreshing={refreshing} onRefresh={onRefresh} refreshAll={refreshAll} />;
       case 'outgoing':
-        return <Outgoing outgoingList={outgoingList} setOutgoingList={setOutgoingList} getOutgoing={getOutgoing} refreshing={refreshing} onRefresh={onRefresh} />;
+        return <Outgoing outgoingList={outgoingList} setOutgoingList={setOutgoingList} getOutgoing={getOutgoing} refreshing={refreshing} onRefresh={onRefresh} refreshAll={refreshAll} />;
       default:
         return null;
     }
