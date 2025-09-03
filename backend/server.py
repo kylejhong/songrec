@@ -59,7 +59,7 @@ def poll_hash(user_id, current_hash):
 
 
 @app.get('/collect_user')
-def collect_user(user_id, current_hash):
+def collect_user(user_id):
 
     user = (
         supabase.table("users")
@@ -145,7 +145,7 @@ def get_recommendations(user_id, input):
     
     for user in response:
         if input:
-            if input in user['username']:
+            if input in user['username'] and user_id != user['id']:
                 recommendations.append(user)
         else:
             recommendations.append(user)
