@@ -109,7 +109,7 @@ const FriendCard = (props: any) => {
             setButtonText("Pending");
             setClicked(true);
 
-            const url = new URL(`${API_URL}/accept_request`);
+            const url = new URL(`${API_URL}/remove_friend`);
             url.searchParams.append('user', `${id}`);
             url.searchParams.append('friend', `${props.id}`);
 
@@ -186,7 +186,7 @@ const FriendCard = (props: any) => {
                 <TouchableOpacity style={ clicked ? [styles.button, styles.buttonGray] : [styles.button, styles.buttonOrange] } onPress={acceptRequest}>
                     <Text style={ clicked ? [styles.buttonText, styles.white] : [styles.buttonText] }>{buttonText}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={ [styles.button, styles.buttonGray] } onPress={ () => {confirmPopup("Reject friend request?", "", () => {rejectRequest})} }>
+                <TouchableOpacity style={ [styles.button, styles.buttonGray] } onPress={ () => {confirmPopup("Reject friend request?", "", () => {rejectRequest()})} }>
                     <Text style={ [styles.buttonText, styles.white] }>Reject</Text>
                 </TouchableOpacity>
             </View>

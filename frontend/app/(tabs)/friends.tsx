@@ -22,7 +22,7 @@ type UserData = {
   friended: boolean,
 }
 
-function Search({ searchQuery, setSearchQuery, searchList, setSearchList, getSearch, refreshInOut, refreshing, onRefresh, isKeyboardVisible }) {
+function Search({ searchQuery, setSearchQuery, searchList, setSearchList, getSearch, refreshAll, refreshing, onRefresh, isKeyboardVisible }) {
   const GlobalStyles = useGlobalStyles();
   const { user } = useAuth();
 
@@ -72,9 +72,9 @@ function Search({ searchQuery, setSearchQuery, searchList, setSearchList, getSea
               id={u.id}
               username={u.username}
               image={u.profile_picture_url}
-              onRequestSent={refreshInOut}
-              requested={u.requested}
+              onRequestSent={refreshAll}
               friended={u.friended}
+              requested={u.requested}
             />
           ))
         ) : null}
@@ -267,6 +267,8 @@ const Friends = () => {
         friended: u.friends?.includes(user.id) ?? false,
       }));
 
+      console.log(url);
+
       setSearchList(newData);
     } catch (error) {
       console.log(error);
@@ -282,7 +284,7 @@ const Friends = () => {
   const renderScene = ({ route }) => {
     switch (route.key) {
       case 'search':
-        return <Search searchQuery={searchQuery} setSearchQuery={setSearchQuery} searchList={searchList} setSearchList={setSearchList} getSearch={getSearch} refreshInOut={refreshInOut} refreshing={refreshing} onRefresh={onRefresh} isKeyboardVisible={isKeyboardVisible} />;
+        return <Search searchQuery={searchQuery} setSearchQuery={setSearchQuery} searchList={searchList} setSearchList={setSearchList} getSearch={getSearch} refreshAll={refreshAll} refreshing={refreshing} onRefresh={onRefresh} isKeyboardVisible={isKeyboardVisible} />;
       case 'incoming':
         return <Incoming incomingList={incomingList} setIncomingList={setIncomingList} getIncoming={getIncoming} refreshing={refreshing} onRefresh={onRefresh} refreshAll={refreshAll} />;
       case 'outgoing':
