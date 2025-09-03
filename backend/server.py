@@ -26,8 +26,10 @@ def create_user(user_id):
         .execute()
     )
 
-@app.get('/update_user/{col_name}/data/{data}')
-def update_user():
+    return 1
+
+@app.get('/update_user/')
+def update_user(user_id, col_name, data):
 
     response_incoming_friend_ids = (
         supabase.table("users")
@@ -35,6 +37,8 @@ def update_user():
         .eq("id", user_id)
         .execute()
     )
+
+    return 1
 
 # Poll request function:
 # Receives: hash OR Nothing
