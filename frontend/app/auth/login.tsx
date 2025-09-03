@@ -7,6 +7,8 @@ import BackgroundGradient from "../../components/BackgroundGradient";
 import HeaderBottomBorder from "../../components/HeaderBottomBorder";
 import useGlobalStyles from "../../components/useGlobalStyles";
 
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
 const AuthScreen = () => {
     const { login: loginState } = useLocalSearchParams();
     const loginStateBool = loginState === 'true';
@@ -40,9 +42,19 @@ const AuthScreen = () => {
             } else {
                 const user = await register(email, password);
 
-                if (user.email_confirmed_at) {
-                    setError('User already registered.');
-                    return;
+                if (!user) throw new Error("Registration failed.");
+
+                setError(null);
+
+                const url = new URL(`${API_URL}/create_user`);
+                url.searchParams.append('user_id', `${user.user.id}`);
+
+                console.log(url);
+
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
                 router.replace('/auth/username');
@@ -50,8 +62,11 @@ const AuthScreen = () => {
             }
             
         } catch (error: any) {
-            Alert.alert('Error', error.message);
-            return;
+            if (error.code === "user_already_exists") {
+                setError("User already registered.");
+            } else {Alert.alert('Error', error.message);
+                return;
+            }
         }
     }
 

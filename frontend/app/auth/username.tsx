@@ -8,16 +8,32 @@ import HeaderBottomBorder from "../../components/HeaderBottomBorder";
 import useGlobalStyles from "../../components/useGlobalStyles";
 import { OnboardingContext } from '@/contexts/OnboardingContext';
 
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
 const Username = () => {
     const GlobalStyles = useGlobalStyles();
     const router = useRouter();
     const [username, setUsername] = useState('');
     const [error, setError] = useState<String | null>(null);
+    const { user } = useAuth();
 
     const handleAuth = async () => {
         if (!username.trim()) {
-            setError('Username is required');
-            return;
+          setError('Username is required');
+          return;
+        }
+
+        const url = new URL(`${API_URL}/update_user`);
+        url.searchParams.append('user_id', `${user.id}`);
+        url.searchParams.append('col_name', `username`);
+        url.searchParams.append('data', `${username}`);
+
+        console.log(url);
+
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         router.replace({
@@ -46,11 +62,13 @@ const Username = () => {
                         autoCapitalize="none" 
                         placeholderTextColor="rgba(255, 255, 255, 0.5)" 
                         style={styles.textInput}
+                        value={username}
+                        onChangeText={setUsername}
                     />
                 </View>
 
                 { error && 
-                    <View style={styles.headerTextContainer}>
+                    <View style={[styles.headerTextContainer, { justifyContent: 'center' }]}>
                         <Ionicons
                             name={'alert-circle-outline'}
                             size={18}
