@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
     textInput: {
       paddingTop: 8,
       paddingBottom: 8,
-      paddingLeft: 16,
+      paddingLeft: 12,
       flex: 1,
       fontSize: 14,
       color: '#fff',
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
       borderColor: 'rgba(255,255,255,0.5)',
       borderWidth: 1,
       borderRadius: 8,
-      paddingRight: 16,
+      paddingRight: 12,
       gap: 16,
       display: 'flex',
       flexDirection: 'row',

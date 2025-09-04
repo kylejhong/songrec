@@ -44,6 +44,15 @@ const Layout = () => {
                     ),
                 }}
                 />
+                <Stack.Screen name ="addsong" options={{ 
+                    headerTitle: () => (
+                        <Text style={{ fontFamily: 'HostGrotesk-ExtraBold', fontSize: 16, fontWeight: 'bold', color: 'white'}}>
+                            week
+                            <Text style={{color: "#FFE58F"}}>.jam</Text>
+                        </Text>
+                    ),
+                }}
+                />
                 <Stack.Screen name ="auth" options={{ 
                     title: "week.jam", headerShown: false
                 }}/>
