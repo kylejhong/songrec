@@ -1,7 +1,10 @@
 import os
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from supabase import create_client, Client
-from dotenv import load_dotenv
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
+import requests
 import hashlib
 import json
 
@@ -11,6 +14,13 @@ app = FastAPI()
 url: str = os.getenv("SUPABASE_URL")
 key: str = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(url, key)
+
+client_credentials = SpotifyClientCredentials(
+    client_id=os.getenv("SPOTIFY_CLIENT_ID"), 
+    client_secret=os.getenv("SPOTIFY_CLIENT_SECRET")
+)
+
+sp = spotipy.Spotify(client_credentials_manager=client_credentials)
 
 # Sign up function to set up user id
 # Receives: User id
@@ -361,10 +371,51 @@ def accept_request(accepter, requester):
     # add user id to friend of requesterand vice versa
     # return status code
 
+@app.get('/get_song')
+def get_song(song_url):
+
+    song_preview = None
+    spotify_song_id = None
+    deezer_song_id = None
+
+    spotify_song_id = song_url.split('/track/')[1].split('?')[0]
+
+    try:
+        song = sp.track(spotify_song_id)
+    except Exception as e:
+        print(f"Error collecting from Spotify: {e}")
+
+    try:
+        search_url = f'''
+            https://api.deezer.com/search?q=
+            {song['name'].replace(' ', '+')}
+            {song['artists'][0]['name']}&limit=1
+        '''
+
+        response = requests.get(search_url).json()
+
+        deezer_song_id = response['data'][0]['id']
+        deezer_song_url = f'https://api.deezer.com/track/{deezer_song_id}'
+        deezer_song = requests.get(deezer_song_url).json()
+
+        if lower(deezer_song['artist']['name']) == lower(song['artists'][0]['name']):
+            song_preview = deezer_song['preview']
+
+    except Exception as e:
+        print(f"Error collecting from Deezer: {e}")
+
+    return {
+        'song_name': song['name'],
+        'album_name': song['album']['name'],
+        'artist_name': ', '.join([artist['name'] for artist in song['artists']]),
+        'cover_art_url': song['album']['images'][0]['url'],
+        'preview_url': song_preview,
+        'spotify_song_id': spotify_song_id,
+        'deezer_song_id': deezer_song_id
+    }
+
 # Search for users (chunks? how work think)
-
 # home page check (is it time of the week for user)
-
 ## song sunmission page
 
 def create_mini_user(user_object):
