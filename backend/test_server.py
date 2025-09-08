@@ -5,22 +5,22 @@ import unittest
 import server
 from server import app
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 load_dotenv()
 
-def create_test_token(user_id="test-uuid", username="testuser"):
+def create_test_token(user_id=os.getenv("DB_TEST_ID"), username=os.getenv("DB_TEST_USERNAME")):
     payload = {
         "sub": user_id,
-        "username": f"{username}@example.com", 
+        "username": username, 
         "role": "authenticated",            
         "aud": "authenticated",             
         "iss": "supabase",                  
-        "exp": datetime.now() + timedelta(hours=1), # 9/7/25 update: tried getting the payload test to work
-        "iat": datetime.now()
+        "exp": (datetime.now(timezone.utc) + timedelta(hours=1)).timestamp(),
+        "iat": (datetime.now(timezone.utc)).timestamp()
     }   
-    secret = os.getenv("SUPABASE_JWT_KEY")
-    return jwt.encode(payload, secret, algorithm="HS256")
+    secret = os.getenv("SUPABASE_JWT_TEST_SIGNING_KEY")
+    return jwt.encode(payload, secret, algorithm="ES256") # 9/7/25 currently making validating JWT w public key work
 
 
 class TestClass(unittest.TestCase):
@@ -37,7 +37,6 @@ class TestClass(unittest.TestCase):
             "/api/auth_ping",
             headers={"Authorization": f"Bearer {create_test_token()}"}
         )
-        print(response)
         assert response.status_code == 200
 
     def test_ping_without_auth(self):

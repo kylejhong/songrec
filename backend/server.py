@@ -1,6 +1,7 @@
 # Depreceated List:
 # /friend_request --> /api/friend_request
 # /collect_user --> /api/get_my_profile
+# supabase key 
 
 import os
 from dotenv import load_dotenv
@@ -27,7 +28,10 @@ supabase_client = supabase.create_client(
     os.getenv("SUPABASE_KEY")
 )
 
-SUPBASE_JWT_KEY = os.getenv("SUPABASE_JWT_KEY")
+if "pytest" in sys.modules:
+    SUPBASE_JWT_KEY = os.getenv("SUPABASE_JWT_TEST_KEY")
+else:
+    SUPBASE_JWT_KEY = os.getenv("SUPABASE_JWT_KEY") # adjust so it grabs from url --------------
 
 client_credentials = spotipy.oauth2.SpotifyClientCredentials(
     client_id=os.getenv("SPOTIFY_CLIENT_ID"), 
@@ -45,7 +49,7 @@ class User(pydantic.BaseModel):
     pfp_url: str
     email_notifications: bool
     push_notifications: bool
-    created_at: datetime# ------------ a likely error with datetime object serialization
+    created_at: datetime
     updated_at: datetime
 
     def toJSON(self):
@@ -82,7 +86,7 @@ async def get_current_user(
         payload = jwt.decode(
             token,
             SUPBASE_JWT_KEY,
-            algorithms=["HS256"],
+            algorithms=["ES256"],
             audience="authenticated",
             issuer="supabase"
         )
@@ -90,12 +94,12 @@ async def get_current_user(
         user_id = payload.get("sub") # ---------------------------------------
         if not user_id:
             raise HTTPException(
-                status_code=69, # 401
+                status_code=401,
                 detail="Invalid authentication credentials"
             )
         
         user_data = (
-            supabase.table("profiles")
+            supabase_client.table("profiles")
             .select("*")
             .eq("id", user_id)
             .execute()
@@ -109,9 +113,10 @@ async def get_current_user(
         
         return User(**user_data.data[0])
         
-    except InvalidTokenError: # properly look into the erros and exceptions of this function
+    except InvalidTokenError as e: # properly look into the erros and exceptions of this function
+        print(e)
         raise HTTPException(
-            status_code=420, # 401
+            status_code=401,
             detail="Invalid authentication credentials"
         )
 
