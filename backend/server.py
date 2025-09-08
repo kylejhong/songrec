@@ -4,16 +4,21 @@
 # supabase key 
 
 import os
+import sys
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException, Query, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import slowapi
 from slowapi.util import get_remote_address 
 import jwt
-from jwt import ExpiredSignatureError, InvalidTokenError
+from jwt import ExpiredSignatureError, InvalidTokenError, PyJWK
+import cryptography
+from jwcrypto import jwk as jwcrypto
 from datetime import datetime
 import pydantic
 import supabase 
+from supabase.client import ClientOptions
+import httpx
 import spotipy
 import requests
 import hashlib
@@ -24,23 +29,44 @@ app = FastAPI()
 security = HTTPBearer()
 
 supabase_client = supabase.create_client(
-    os.getenv("SUPABASE_URL"), 
-    os.getenv("SUPABASE_KEY")
+    os.getenv('SUPABASE_URL'), 
+    os.getenv('SUPABASE_KEY'),
+    # These extra options are to prevent depreciation warnings in supabase_client:
+    options=ClientOptions( 
+        postgrest_client_timeout=20,
+        storage_client_timeout=20,
+        httpx_client=httpx.Client(verify=False)
+    )
 )
-
-if "pytest" in sys.modules:
-    SUPBASE_JWT_KEY = os.getenv("SUPABASE_JWT_TEST_KEY")
-else:
-    SUPBASE_JWT_KEY = os.getenv("SUPABASE_JWT_KEY") # adjust so it grabs from url --------------
-
+    
 client_credentials = spotipy.oauth2.SpotifyClientCredentials(
-    client_id=os.getenv("SPOTIFY_CLIENT_ID"), 
-    client_secret=os.getenv("SPOTIFY_CLIENT_SECRET")
+    client_id=os.getenv('SPOTIFY_CLIENT_ID'), 
+    client_secret=os.getenv('SPOTIFY_CLIENT_SECRET')
 )
 spotify_client = spotipy.Spotify(client_credentials_manager=client_credentials)
 
 limiter = slowapi.Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
+
+if 'unittest' in sys.modules: 
+
+    import json # -------- only used here, so is fine?
+
+    with open('test_keys.json', 'r') as f:
+        JWT_KEY = json.load(f)
+
+    jwt_instance = jwcrypto.JWK.from_json(json.dumps(JWT_KEY))
+    pem_data = jwt_instance.export_to_pem()
+    public_key = pem_data.decode('utf-8')
+
+    def get_public_key():
+        return public_key
+
+else:
+    JWT_KEY = os.getenv('JWT_TEST_KEYS') # adjust so it grabs from url --------------
+
+    def get_public_key():
+        return JWT_KEY
 
 
 class User(pydantic.BaseModel):
@@ -52,7 +78,7 @@ class User(pydantic.BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    def toJSON(self):
+    def toJSON(self): # -------- check if works so front-end still functions
         return json.dumps(
             self,
             default=lambda o: o.__dict__, 
@@ -65,7 +91,7 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> User:
 
-    """
+    '''
     Obtain the current user data through a validated JWT token.
     This is called in every API function argument.
 
@@ -77,7 +103,7 @@ async def get_current_user(
 
     Raises:
         HTTPException: If credentials are invalid or user is not found.
-    """
+    '''
 
     token = credentials.credentials
     
@@ -85,56 +111,55 @@ async def get_current_user(
         
         payload = jwt.decode(
             token,
-            SUPBASE_JWT_KEY,
-            algorithms=["ES256"],
-            audience="authenticated",
-            issuer="supabase"
+            get_public_key(),
+            algorithms=['ES256'],
+            audience='authenticated',
+            issuer='supabase'
         )
 
-        user_id = payload.get("sub") # ---------------------------------------
+        user_id = payload.get('sub') 
         if not user_id:
             raise HTTPException(
                 status_code=401,
-                detail="Invalid authentication credentials"
+                detail='Invalid authentication credentials'
             )
         
         user_data = (
-            supabase_client.table("profiles")
-            .select("*")
-            .eq("id", user_id)
+            supabase_client.table('profiles')
+            .select('*')
+            .eq('id', user_id)
             .execute()
         )
         
         if not user_data.data:
             raise HTTPException(
                 status_code=404,
-                detail="User not found"
+                detail='User not found'
             )
         
         return User(**user_data.data[0])
         
     except InvalidTokenError as e: # properly look into the erros and exceptions of this function
-        print(e)
         raise HTTPException(
             status_code=401,
-            detail="Invalid authentication credentials"
+            detail='Invalid authentication credentials'
         )
 
 
-@app.get("/api/my-profile")
+@app.get('/api/my-profile')
 async def get_my_profile(current_user: User = Depends(get_current_user)):
     return current_user
 
 
-@app.post("/api/friend_request")
-@limiter.limit("20/minute")
+@app.post('/api/friend_request')
+@limiter.limit('20/minute')
 async def send_friend_request(
     request: Request,
     receiver_id: str,
     current_user: User = Depends(get_current_user)
 ):
 
-    """
+    '''
     Send a friend request from the current user to another user.
 
     Args:
@@ -147,49 +172,49 @@ async def send_friend_request(
 
     Raises:
         HTTPException: If reciever doesn't exist or request already exists
-    """
+    '''
 
     receiver = (
-        supabase.table("profiles")
-        .select("*")
-        .eq("id", receiver_id)
+        supabase.table('profiles')
+        .select('*')
+        .eq('id', receiver_id)
         .execute()
     )
     if not receiver.data:
-        raise HTTPException(status_code=404, detail="Receiver not found") # ---------------decide if these should be one line or two line
+        raise HTTPException(status_code=404, detail='Receiver not found') # ---------------decide if these should be one line or two line
     
     existing_request = (
-        supabase_client.table("friend_requests")
-        .select("*")
-        .eq("sender_id", current_user.id)
-        .eq("receiver_id", receiver_id)
+        supabase_client.table('friend_requests')
+        .select('*')
+        .eq('sender_id', current_user.id)
+        .eq('receiver_id', receiver_id)
         .execute()
     )
     if existing_request.data:
-        raise HTTPException(status_code=400, detail="Friend request already sent")
+        raise HTTPException(status_code=400, detail='Friend request already sent')
     
     new_request = (
-        supabase.table("friend_requests")
+        supabase.table('friend_requests')
         .insert({
-            "sender_id": current_user.id,
-            "receiver_id": receiver_id,
-            "status": "pending"
+            'sender_id': current_user.id,
+            'receiver_id': receiver_id,
+            'status': 'pending'
         })
         .execute()
     )
     
-    return {"message": "Friend request sent", "request_id": new_request.data[0]["id"]} # ------------ should be dict?
+    return {'message': 'Friend request sent', 'request_id': new_request.data[0]['id']} # ------------ should be dict?
 
 
-@app.post("/api/accept_request")
-@limiter.limit("20/minute")
+@app.post('/api/accept_request')
+@limiter.limit('20/minute')
 async def accept_friend_request(
     request: Request,
     request_id: str,
     current_user: User = Depends(get_current_user)
 ):
 
-    """
+    '''
     Accept a friend request directed to the current user from another user.
 
     Args:
@@ -202,46 +227,46 @@ async def accept_friend_request(
 
     Raises:
         HTTPException: If the request doesn't exist.
-    """
+    '''
 
     request = (
-        supabase_client.table("friend_requests")
-        .select("*")
-        .eq("id", request_id)
+        supabase_client.table('friend_requests')
+        .select('*')
+        .eq('id', request_id)
         .execute()
     )
     if not request.data:
-        raise HTTPException(status_code=404, detail="Request not found") # ---------------decide if these should be one line or two line
+        raise HTTPException(status_code=404, detail='Request not found') # ---------------decide if these should be one line or two line
     
     accept_request = (
-        supabase_client.table("friend_requests")
+        supabase_client.table('friend_requests')
         .update({
-            "status": "accepted"
+            'status': 'accepted'
         })
-        .eq("id", request_id)
+        .eq('id', request_id)
         .execute()
     )
 
     add_friend = (
-        supabase.table("friends")
+        supabase.table('friends')
         .insert({
-            "user_id": current_user.id,
-            "friend_id": accept_request.data.sender_id, # -------------------- see if this even works
-            "status": "pending"
+            'user_id': current_user.id,
+            'friend_id': accept_request.data.sender_id, # -------------------- see if this even works
+            'status': 'pending'
         })
         .execute()
     )
     
-    return {"message": "Friend request sent", "user_id": add_friend.data[0]["user_id"]} # ------------ should be dict?
+    return {'message': 'Friend request sent', 'user_id': add_friend.data[0]['user_id']} # ------------ should be dict?
 
 # ------------------- look for how auth will be implemented and adjust this function/pipeline accordingly
 @app.get('/create_user')
 def create_user(user_id):
 
     response = (
-        supabase_client.table("users")
+        supabase_client.table('users')
         .insert({
-            "id": user_id
+            'id': user_id
         })
         .execute()
     )
@@ -253,9 +278,9 @@ def create_user(user_id):
 def update_user(user_id, col_name, data):
 
     response_incoming_friend_ids = (
-        supabase_client.table("users")
+        supabase_client.table('users')
         .update({col_name: data})
-        .eq("id", user_id)
+        .eq('id', user_id)
         .execute()
     )
 
@@ -266,17 +291,17 @@ def update_user(user_id, col_name, data):
 def collect_outgoing(user_id):
 
     outgoing = (
-        supabase_client.table("users")
-        .select("*")
-        .eq("id", user_id)
+        supabase_client.table('users')
+        .select('*')
+        .eq('id', user_id)
         .limit(1)
         .execute()
-        .data[0]["outgoing_requests"]
+        .data[0]['outgoing_requests']
     )
 
     response = (
-        supabase_client.table("users")
-        .select("*")
+        supabase_client.table('users')
+        .select('*')
         .execute()
         .data
     )
@@ -294,17 +319,17 @@ def collect_outgoing(user_id):
 def collect_incoming(user_id):
 
     incoming = (
-        supabase_client.table("users")
-        .select("*")
-        .eq("id", user_id)
+        supabase_client.table('users')
+        .select('*')
+        .eq('id', user_id)
         .limit(1)
         .execute()
-        .data[0]["incoming_requests"]
+        .data[0]['incoming_requests']
     )
 
     response = (
-        supabase_client.table("users")
-        .select("*")
+        supabase_client.table('users')
+        .select('*')
         .execute()
         .data
     )
@@ -318,14 +343,14 @@ def collect_incoming(user_id):
     return users
 
 
-@app.get("/api/search_users")
+@app.get('/api/search_users')
 async def search_users(
     query: str = Query(..., min_length=1, max_length=50),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     current_user: User = Depends(get_current_user)
 ):
-    """
+    '''
     Search for any user in the search page based on username
 
     Args:
@@ -339,13 +364,13 @@ async def search_users(
 
     Raises:
         HTTPException: If returned zero results or on error.
-    """
+    '''
     try:
         search_query = (
-            supabase.table("profiles")
-            .select("id, username")
-            .or_(f"username.ilike.%{query}%")
-            .order("username")
+            supabase.table('profiles')
+            .select('id, username')
+            .or_(f'username.ilike.%{query}%')
+            .order('username')
             .limit(limit)
             .offset(offset)
             .execute()
@@ -354,19 +379,19 @@ async def search_users(
         if search_query.data == None: # ------------------------------
             raise HTTPException(
                 status_code=404, # ----------------------------
-                detail="Search returned zero results"
+                detail='Search returned zero results'
             )
         
         return {
-            "results": search_query.data,
-            "total_count": len(search_query.data),
-            "has_more": len(search_query.data) == limit
+            'results': search_query.data,
+            'total_count': len(search_query.data),
+            'has_more': len(search_query.data) == limit
         }
         
     except Exception as e:
         raise HTTPException(
             status_code=500, 
-            detail=f"Search failed: {str(e)}"
+            detail=f'Search failed: {str(e)}'
         )
 
 
@@ -374,37 +399,37 @@ async def search_users(
 def reject_request(accepter, requester):
 
     accepter_incoming = (
-        supabase_client.table("users")
-        .select("incoming_requests")
-        .eq("id", accepter)
+        supabase_client.table('users')
+        .select('incoming_requests')
+        .eq('id', accepter)
         .limit(1)
         .execute()
-        .data[0]["incoming_requests"]
+        .data[0]['incoming_requests']
     )
 
     requester_outgoing = (
-        supabase_client.table("users")
-        .select("outgoing_requests")
-        .eq("id", requester)
+        supabase_client.table('users')
+        .select('outgoing_requests')
+        .eq('id', requester)
         .limit(1)
         .execute()
-        .data[0]["outgoing_requests"]
+        .data[0]['outgoing_requests']
     )
 
     requester_outgoing.remove(accepter)
     accepter_incoming.remove(requester)
 
     response_requester_outgoing = (
-        supabase_client.table("users")
-        .update({"outgoing_requests": requester_outgoing})
-        .eq("id", requester)
+        supabase_client.table('users')
+        .update({'outgoing_requests': requester_outgoing})
+        .eq('id', requester)
         .execute()
     )
 
     response_accepter_incoming = (
-        supabase_client.table("users")
-        .update({"incoming_requests": accepter_incoming})
-        .eq("id", accepter)
+        supabase_client.table('users')
+        .update({'incoming_requests': accepter_incoming})
+        .eq('id', accepter)
         .execute()
     )
 
@@ -415,37 +440,37 @@ def reject_request(accepter, requester):
 def remove_friend(user, friend):
 
     user_friends = (
-        supabase_client.table("users")
-        .select("friends")
-        .eq("id", user)
+        supabase_client.table('users')
+        .select('friends')
+        .eq('id', user)
         .limit(1)
         .execute()
-        .data[0]["friends"]
+        .data[0]['friends']
     )
 
     friend_friends = (
-        supabase_client.table("users")
-        .select("friends")
-        .eq("id", friend)
+        supabase_client.table('users')
+        .select('friends')
+        .eq('id', friend)
         .limit(1)
         .execute()
-        .data[0]["friends"]
+        .data[0]['friends']
     )
 
     user_friends.remove(friend)
     friend_friends.remove(user)
 
     response_user_friends = (
-        supabase_client.table("users")
-        .update({"friends": user_friends})
-        .eq("id", user)
+        supabase_client.table('users')
+        .update({'friends': user_friends})
+        .eq('id', user)
         .execute()
     )
 
     response_friend_friends = (
-        supabase_client.table("users")
-        .update({"friends": friend_friends})
-        .eq("id", friend)
+        supabase_client.table('users')
+        .update({'friends': friend_friends})
+        .eq('id', friend)
         .execute()
     )
 
@@ -456,39 +481,39 @@ def remove_friend(user, friend):
 def accept_request(accepter, requester):
 
     accepter_incoming = (
-        supabase_client.table("users")
-        .select("incoming_requests")
-        .eq("id", accepter)
+        supabase_client.table('users')
+        .select('incoming_requests')
+        .eq('id', accepter)
         .limit(1)
         .execute()
-        .data[0]["incoming_requests"]
+        .data[0]['incoming_requests']
     )
 
     requester_outgoing = (
-        supabase_client.table("users")
-        .select("outgoing_requests")
-        .eq("id", requester)
+        supabase_client.table('users')
+        .select('outgoing_requests')
+        .eq('id', requester)
         .limit(1)
         .execute()
-        .data[0]["outgoing_requests"]
+        .data[0]['outgoing_requests']
     )
 
     accepter_friends = (
-        supabase_client.table("users")
-        .select("friends")
-        .eq("id", accepter)
+        supabase_client.table('users')
+        .select('friends')
+        .eq('id', accepter)
         .limit(1)
         .execute()
-        .data[0]["friends"]
+        .data[0]['friends']
     )
 
     requester_friends = (
-        supabase_client.table("users")
-        .select("friends")
-        .eq("id", requester)
+        supabase_client.table('users')
+        .select('friends')
+        .eq('id', requester)
         .limit(1)
         .execute()
-        .data[0]["friends"]
+        .data[0]['friends']
     )
 
     accepter_incoming.remove(requester)
@@ -497,30 +522,30 @@ def accept_request(accepter, requester):
     accepter_friends.append(requester)
 
     response_accepter_incoming = (
-        supabase_client.table("users")
-        .update({"incoming_requests": accepter_incoming})
-        .eq("id", accepter)
+        supabase_client.table('users')
+        .update({'incoming_requests': accepter_incoming})
+        .eq('id', accepter)
         .execute()
     )
 
     response_requester_outgoing = (
-        supabase_client.table("users")
-        .update({"outgoing_requests": requester_outgoing})
-        .eq("id", requester)
+        supabase_client.table('users')
+        .update({'outgoing_requests': requester_outgoing})
+        .eq('id', requester)
         .execute()
     )
 
     response_accepter_friends = (
-        supabase_client.table("users")
-        .update({"friends": accepter_friends})
-        .eq("id", accepter)
+        supabase_client.table('users')
+        .update({'friends': accepter_friends})
+        .eq('id', accepter)
         .execute()
     )
 
     response_requester_friends = (
-        supabase_client.table("users")
-        .update({"friends": requester_friends})
-        .eq("id", requester)
+        supabase_client.table('users')
+        .update({'friends': requester_friends})
+        .eq('id', requester)
         .execute()
     )
 
@@ -543,7 +568,7 @@ def get_song(song_url):
     try:
         song = spotify_client.track(spotify_song_id)
     except Exception as e:
-        print(f"Error collecting from Spotify: {e}")
+        print(f'Error collecting from Spotify: {e}')
 
     try:
         search_url = f'''
@@ -562,7 +587,7 @@ def get_song(song_url):
             song_preview = deezer_song['preview']
 
     except Exception as e:
-        print(f"Error collecting from Deezer: {e}")
+        print(f'Error collecting from Deezer: {e}')
 
     return {
         'song_name': song['name'],
@@ -575,14 +600,14 @@ def get_song(song_url):
     }
 
 
-@app.post("/api/ping")
-@limiter.limit("20/minute")
+@app.post('/api/ping')
+@limiter.limit('20/minute')
 async def ping(request: Request):
     return 'ping!'
 
 
-@app.post("/api/auth_ping")
-@limiter.limit("20/minute")
+@app.post('/api/auth_ping')
+@limiter.limit('20/minute')
 async def auth_ping(
     request: Request,
     current_user: User = Depends(get_current_user)
