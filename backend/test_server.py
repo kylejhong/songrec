@@ -2,6 +2,9 @@ import os
 from dotenv import load_dotenv
 import json
 from fastapi.testclient import TestClient
+import supabase 
+from supabase.client import ClientOptions
+import httpx
 import unittest
 import server
 from server import app
@@ -12,7 +15,18 @@ from datetime import datetime, timedelta, timezone
 
 load_dotenv()
 
-def create_test_token(user_id=os.getenv('DB_TEST_ID'), username=os.getenv('DB_TEST_USERNAME')):
+supabase_client = supabase.create_client(
+    os.getenv('SUPABASE_URL'), 
+    os.getenv('SUPABASE_KEY'),
+    # These extra options are to prevent depreciation warnings in supabase_client:
+    options=ClientOptions( 
+        postgrest_client_timeout=20,
+        storage_client_timeout=20,
+        httpx_client=httpx.Client(verify=False)
+    )
+)
+
+def create_test_token(user_id=os.getenv('DB_TEST_ID_1'), username=os.getenv('DB_TEST_USERNAME_1')):
     payload = {
         'sub': user_id,
         'username': username, 
@@ -36,6 +50,7 @@ class TestClass(unittest.TestCase):
 
     def setUp(self):
         self.client = TestClient(app)
+        self.friend_request_id = None
 
     def test_ping_endpoint_exists(self):
         response = self.client.post('/api/ping')
@@ -51,6 +66,82 @@ class TestClass(unittest.TestCase):
     def test_ping_without_auth(self):
         response = self.client.post('/api/auth_ping')
         assert response.status_code == 403
+
+    def cleanup_test_users(self):
+        response = (
+            supabase_client.table('friend_requests')
+            .delete()
+            .eq('sender_id', os.getenv('DB_TEST_ID_1'))
+            .execute()
+        )
+        response = (
+            supabase_client.table('friends')
+            .delete()
+            .eq('user_id', os.getenv('DB_TEST_ID_2'))
+            .execute()
+        )
+
+    def test_friend_request(self):
+        response = self.client.post(
+            '/api/friend_request',
+            headers={'Authorization': f'Bearer {create_test_token()}'},
+            params={'receiver_id': os.getenv('DB_TEST_ID_2')}
+        )
+        self.friend_request_id = response['request_id']
+        assert response.status_code == 200
+
+    def test_already_requested(self):
+        response = self.client.post(
+            '/api/friend_request',
+            headers={'Authorization': f'Bearer {create_test_token()}'},
+            params={'receiver_id': os.getenv('DB_TEST_ID_2')}
+        )
+        assert response.status_code == 400
+
+    def test_reject_request(self):
+        response = self.client.post(
+            '/api/reject_request',
+            headers={'Authorization': f'Bearer {
+                create_test_token(
+                    user_id=os.getenv('DB_TEST_ID_2'), 
+                    username=os.getenv('DB_TEST_USERNAME_2')
+                )
+            }'},
+            params={'request_id': self.friend_request_id} # 9/8/25 trying to fix this mess, turns out unit testing and integration testing have different names for a reason. unit test the song logic, integration test the user stuff. Currently adjusting each function to run somewhat independantly (supabase logic, then api call. rinse and repeat)
+        )
+        assert response.status_code == 200
+
+    def test_accept_request(self):
+        response = self.client.post(
+            '/api/friend_request',
+            headers={'Authorization': f'Bearer {create_test_token()}'},
+            params={'receiver_id': os.getenv('DB_TEST_ID_2')}
+        )
+        response = self.client.post(
+            '/api/accept_request',
+            headers={'Authorization': f'Bearer {
+                create_test_token(
+                    user_id=os.getenv('DB_TEST_ID_2'), 
+                    username=os.getenv('DB_TEST_USERNAME_2')
+                )
+            }'},
+            params={'request_id': self.friend_request_id}
+        )
+        assert response.status_code == 200
+
+    def test_already_friends(self):
+        response = self.client.post(
+            '/api/accept_request',
+            headers={'Authorization': f'Bearer {
+                create_test_token(
+                    user_id=os.getenv('DB_TEST_ID_2'), 
+                    username=os.getenv('DB_TEST_USERNAME_2')
+                )
+            }'},
+            params={'request_id': self.friend_request_id}
+        )
+        assert response.status_code == 400
+
 
 
 if __name__ == '__main__':
