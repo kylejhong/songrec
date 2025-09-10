@@ -1,6 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, TouchableOpacity, View, TextInput, Animated, Easing } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, TextInput, Animated, Easing, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { useState, useRef, useEffect } from 'react';
 import { Image } from 'expo-image';
 import BackgroundGradient from "../../components/BackgroundGradient";
@@ -10,13 +11,80 @@ import useGlobalStyles from "../../components/useGlobalStyles";
 import { BlurView } from 'expo-blur';
 import { useHeaderHeight } from '@react-navigation/elements';
 
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
+type Song = {
+  song_name: string;
+  album_name: string;
+  artist_name: string;
+  cover_art_url: string;
+  preview_url: string | null;
+  spotify_song_id: string;
+  deezer_song_id: number;
+};
+
+const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
+
+async function pasteFromClipboard(setSearchQuery) {
+  const text = await Clipboard.getStringAsync();
+  if (text) {
+    setSearchQuery(text);
+    Keyboard.dismiss();
+  }
+}
+
 const AddSong = () => {
   const GlobalStyles = useGlobalStyles();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [showContent, setShowContent] = useState(false);
+  const [song, setSong] = useState<Song | null>(null);
   const headerHeight = useHeaderHeight();
-  const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [contentHeight, setContentHeight] = useState(0);
+
+  const contentKey = `${song?.song_name}-${song?.artist_name}-${song?.album_name}`;
+  const lastContentKey = useRef('');
+
+    const handleContentLayout = (event) => {
+        const { height } = event.nativeEvent.layout;
+        if (height > 0 && height !== contentHeight && contentKey !== lastContentKey.current) {
+            setContentHeight(height);
+            lastContentKey.current = contentKey;
+            console.log(contentKey);
+        }
+    };
+
+  const getSong = async () => {
+    try {
+        setOpen(false);
+        if (!searchQuery.includes("track") || !searchQuery.includes("spotify")) {
+            setSong(null);
+            return;
+        }
+
+        const url = new URL(`${API_URL}/get_song`);
+        url.searchParams.append('song_url', `${searchQuery}`);
+
+        console.log(url);
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        setSong(data as Song);
+        setOpen(true);
+        Keyboard.dismiss();
+    } catch (error) {
+        console.log(error);
+        setSong(null);
+        setOpen(false);
+    }
+  }
+
+  useEffect(() => {
+    getSong();
+  }, [searchQuery]);
 
   const heightAnim = useRef(new Animated.Value(0)).current;
   const marginAnim = useRef(new Animated.Value(0)).current;
@@ -24,7 +92,7 @@ const AddSong = () => {
 
   const animatedHeight = heightAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 360], // Adjust this value based on your content height
+    outputRange: [0, Math.max(contentHeight, 360)], // Adjust this value based on your content height
   });
 
   const animatedMargin = marginAnim.interpolate({
@@ -33,7 +101,7 @@ const AddSong = () => {
   });
 
   useEffect(() => {
-    if (open) {
+    if (open && contentHeight > 0) {
       // Animate to expanded state
       Animated.parallel([
         Animated.timing(heightAnim, {
@@ -81,84 +149,125 @@ const AddSong = () => {
   }, [open]);
 
   return (
-    <View style={[GlobalStyles.container, styles.centered, { marginTop: -headerHeight + 24 }]}>
-        <BackgroundGradient />
-        <Text style={[styles.h1, { marginBottom: -16 }]}>What's your 
-            <Text style={{color: "#FFE58F"}}> song of the week?</Text>
-        </Text>
-        <Text style={styles.h2}>Enter a song to view all your friends’ songs</Text>
-
-        <AnimatedBlurView intensity={90} tint="dark" style={[styles.container, { paddingTop: animatedMargin }]} >
-            <Animated.View
-                style={[StyleSheet.absoluteFillObject, {
-                    opacity: opacityAnim,
-                    zIndex: -1,
-                }]}
-            >
-                <Image
-                    source={{ uri: 'https://upload.wikimedia.org/wikipedia/en/e/eb/Luv%28Sic%29_Hexalogy.jpg' }}
-                    style={ styles.blurImage }
-                />
-                <Image
-                    source={{ uri: 'https://upload.wikimedia.org/wikipedia/en/e/eb/Luv%28Sic%29_Hexalogy.jpg' }}
-                    style={ [styles.blurImage, { top: -20, left: -20, right: -20, bottom: -20, opacity: 0.1 }] }
-                />
-            </Animated.View>
-
-            <Animated.View
-                style={{
-                    maxHeight: animatedHeight,
-                    opacity: opacityAnim,
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 24,
-                }}
-            >
-                <Image
-                    source={{ uri: 'https://upload.wikimedia.org/wikipedia/en/e/eb/Luv%28Sic%29_Hexalogy.jpg' }}
-                    style={ styles.backgroundImage }
-                />
-                <View style={{ display: 'flex', gap: 4 }}>
-                    <Text style={styles.cardTitle}>Luv (sic)</Text>
-                    <View style = {{ display: 'flex', flexDirection: 'row', gap: 8, flexWrap: 'wrap', rowGap: 0, }}>
-                        <Text style={styles.p}>Nujabes</Text>
-                        <Text style={styles.p}>|</Text>
-                        <Text style={styles.p}>Luv (sic) Hexalogy</Text>
-                        <Text style={styles.p}>|</Text>
-                        <Text style={styles.p}>Dec. 2015</Text>
-                    </View>
-                </View>
-            </Animated.View>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         
-            
-            <View style={{ display: 'flex', flexDirection: 'row', width: '100%', gap: 16 }}>
-                <TextInput 
-                    placeholder="Paste spotify link here..."
-                    autoCapitalize="none" 
-                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                    style={styles.textInput}
-                />
-                <TouchableOpacity style={styles.pasteButton} onPress={() => setOpen(!open)}>
-                    <Ionicons
-                        name={'clipboard-outline'}
-                        size={20}
-                        color={'#000'}
-                    />
-                </TouchableOpacity>
+            <View style={[GlobalStyles.container, styles.centered, { marginTop: -headerHeight + 24 }]}>
+                <BackgroundGradient />
+                <Text style={[styles.h1, { marginBottom: -16 }]}>What's your 
+                    <Text style={{color: "#FFE58F"}}> song of the week?</Text>
+                </Text>
+                <Text style={styles.h2}>Enter a song to view all your friends’ songs</Text>
+
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'} // 'padding' for iOS, 'height' for Android
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0} // tweak this to shift higher/lower
+                    style={[styles.keyboard, { alignItems: 'center', gap: 24 }]}
+                >
+                    <AnimatedBlurView intensity={90} tint="dark" style={[styles.container, { paddingTop: animatedMargin }]} >
+                        <View
+                            style={{
+                            position: 'absolute',
+                            opacity: 0,
+                            zIndex: -999,
+                            }}
+                            onLayout={handleContentLayout}
+                        >
+                            <View style={{ gap: 24 }}>
+                            <Image 
+                                source={{ uri: song?.cover_art_url }} 
+                                style={styles.backgroundImage} 
+                            />
+                            <View style={{ gap: 4 }}>
+                                <Text style={styles.cardTitle}>{song?.song_name}</Text>
+                                <View style={{
+                                flexDirection: 'row',
+                                gap: 8,
+                                flexWrap: 'wrap',
+                                rowGap: 0,
+                                }}>
+                                <Text style={styles.p}>{song?.artist_name}</Text>
+                                <Text style={styles.p}>|</Text>
+                                <Text style={styles.p}>{song?.album_name}</Text>
+                                </View>
+                            </View>
+                            </View>
+                        </View>
+
+
+                        
+                        <Animated.View
+                            style={[StyleSheet.absoluteFillObject, {
+                                opacity: opacityAnim,
+                                zIndex: -1,
+                            }]}
+                        >
+                            <Image
+                                source={{ uri: song?.cover_art_url }}
+                                style={ styles.blurImage }
+                            />
+                            <Image
+                                source={{ uri: song?.cover_art_url }}
+                                style={ [styles.blurImage, { top: -20, left: -20, right: -20, bottom: -20, opacity: 0.1 }] }
+                            />
+                        </Animated.View>
+
+                        <Animated.View
+                            style={{
+                                maxHeight: animatedHeight,
+                                opacity: opacityAnim,
+                                overflow: 'hidden',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 24,
+                            }}
+                        >
+                            <Image
+                                source={{ uri: song?.cover_art_url }}
+                                style={ styles.backgroundImage }
+                            />
+                            <View style={{ display: 'flex', gap: 4 }}>
+                                <Text style={styles.cardTitle}>{ song?.song_name }</Text>
+                                <View style = {{ display: 'flex', flexDirection: 'row', gap: 8, flexWrap: 'wrap', rowGap: 0, }}>
+                                    <Text style={styles.p}>{ song?.artist_name }</Text>
+                                    <Text style={styles.p}>|</Text>
+                                    <Text style={styles.p}>{ song?.album_name }</Text>
+                                    {/*<Text style={styles.p}>|</Text>
+                                    <Text style={styles.p}>Dec. 2015</Text>*/}
+                                </View>
+                            </View>
+                        </Animated.View>
+                    
+                        
+                        <View style={{ display: 'flex', flexDirection: 'row', width: '100%', gap: 16 }}>
+                            <TextInput 
+                                placeholder="Paste spotify link here..."
+                                autoCapitalize="none" 
+                                placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                                style={styles.textInput}
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                            />
+                            <TouchableOpacity style={styles.pasteButton} onPress={() => pasteFromClipboard(setSearchQuery)}>
+                                <Ionicons
+                                    name={'clipboard-outline'}
+                                    size={20}
+                                    color={'#000'}
+                                />
+                            </TouchableOpacity>
+                        </View>
+                    </AnimatedBlurView>
+
+                    <TouchableOpacity style={styles.button}>
+                        <Text style={styles.buttonText}>Continue</Text>
+                        <Ionicons
+                            name={'arrow-forward-outline'}
+                            size={20}
+                            color={'#000'}
+                        />
+                    </TouchableOpacity>
+                </KeyboardAvoidingView>
             </View>
-        </AnimatedBlurView>
-
-
-        <TouchableOpacity style={styles.button}>
-            <Text style={styles.buttonText}>Continue</Text>
-            <Ionicons
-                name={'arrow-forward-outline'}
-                size={20}
-                color={'#000'}
-            />
-        </TouchableOpacity>
-    </View>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -167,6 +276,9 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         gap: 24,
+    },
+    keyboard: {
+        width: '100%'
     },
     container: {
         display: 'flex',
@@ -201,7 +313,7 @@ const styles = StyleSheet.create({
         padding: 8,
         borderRadius: 8,
         flexGrow: 0,
-        flexShrink: 1,
+        flexShrink: 0,
     },
     buttonText: {
         color: '#000',
@@ -256,6 +368,7 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontFamily: 'HostGrotesk-Regular',
         flexGrow: 1,
+        flexShrink: 1,
     },
     blurImage: {
         position: 'absolute',
