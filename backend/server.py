@@ -67,6 +67,7 @@ else:
 
     def get_public_key():
         
+        print('gloob')
         response = requests.get(os.getenv('PUBLIC_JWT_KEY_URL'))
         response.raise_for_status()
 
@@ -97,6 +98,7 @@ class User(pydantic.BaseModel):
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> User:
+    print('gleeb')
     '''
     Obtain the current user data through a validated JWT token.
     This is called in every API function argument.
@@ -429,6 +431,7 @@ async def collect_requests(
 @app.get('/api/search_users')
 @limiter.limit('20/minute')
 async def search_users(
+    return 'test'
    request: Request,
     query: str = Query(..., min_length=1, max_length=50),
     limit: int = Query(20, ge=1, le=100),
