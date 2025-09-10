@@ -6,7 +6,7 @@
 # to-do:
 # logging
 # user creation/sign-up logic 
-# basic user/friend flow api endpoints (nearly done)
+# add error catching (try except) to every function
 
 import os
 import sys
@@ -55,8 +55,6 @@ app.state.limiter = limiter
 
 if 'unittest' in sys.modules: 
 
-    import json # -------- only used here, so is fine?
-
     with open('test_keys.json', 'r') as f:
         JWT_KEY = json.load(f)
 
@@ -68,10 +66,18 @@ if 'unittest' in sys.modules:
         return public_key
 
 else:
-    JWT_KEY = os.getenv('JWT_TEST_KEYS') # adjust so it grabs from url --------------
 
     def get_public_key():
-        return JWT_KEY
+        
+        response = requests.get(os.getenv('PUBLIC_JWT_KEY_URL'))
+        response.raise_for_status()
+
+        key = response.json()['keys'][0]
+        jwt_instance = jwcrypto.JWK.from_json(json.dumps(key))
+        pem_data = jwt_instance.export_to_pem()
+        public_key = pem_data.decode('utf-8')
+
+        return public_key
 
 
 class User(pydantic.BaseModel):
@@ -83,7 +89,7 @@ class User(pydantic.BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    def toJSON(self): # -------- check if works so front-end still functions
+    def to_json(self): 
         return json.dumps(
             self,
             default=lambda o: o.__dict__, 
@@ -138,13 +144,19 @@ async def get_current_user(
         
         return User(**user_data.data[0])
         
+    except HTTPException:
+        raise
     except InvalidTokenError as e: # properly look into the erros and exceptions of this function
         raise HTTPException(status_code=401, detail='Invalid authentication credentials')
 
 
 @app.get('/api/my-profile')
-async def get_my_profile(current_user: User = Depends(get_current_user)):
-    return current_user
+@limiter.limit('20/minute')
+async def get_my_profile(
+    request: Request,
+    current_user: User = Depends(get_current_user)
+):
+    return current_user.to_json()
 
 
 @app.post('/api/friend_request')
@@ -154,7 +166,6 @@ async def send_friend_request(
     receiver_id: str,
     current_user: User = Depends(get_current_user)
 ):
-
     '''
     Send a friend request from the current user to another user.
 
@@ -169,53 +180,59 @@ async def send_friend_request(
     Raises:
         HTTPException: If reciever doesn't exist or request already exists
     '''
+    try:
+        receiver = (
+            supabase_client.table('profiles')
+            .select('*')
+            .eq('id', receiver_id)
+            .execute()
+        )
+        if not receiver.data:
+            raise HTTPException(status_code=404, detail='Receiver not found') 
+        
+        existing_request = (
+            supabase_client.table('friend_requests')
+            .select('*')
+            .eq('sender_id', current_user.id)
+            .eq('receiver_id', receiver_id)
+            .execute()
+        )
+        if existing_request.data:
+            raise HTTPException(status_code=400, detail='Friend request already sent')
+        
+        new_request = (
+            supabase_client.table('friend_requests')
+            .insert({
+                'sender_id': current_user.id,
+                'receiver_id': receiver_id,
+                'status': 'pending'
+            })
+            .execute()
+        )
+        
+        return {'message': 'Friend request sent', 'request_id': new_request.data[0]['id']} 
 
-    receiver = (
-        supabase_client.table('profiles')
-        .select('*')
-        .eq('id', receiver_id)
-        .execute()
-    )
-    if not receiver.data:
-        raise HTTPException(status_code=404, detail='Receiver not found') # ---------------decide if these should be one line or two line
-    
-    existing_request = (
-        supabase_client.table('friend_requests')
-        .select('*')
-        .eq('sender_id', current_user.id)
-        .eq('receiver_id', receiver_id)
-        .execute()
-    )
-    if existing_request.data:
-        raise HTTPException(status_code=400, detail='Friend request already sent')
-    
-    new_request = (
-        supabase_client.table('friend_requests')
-        .insert({
-            'sender_id': current_user.id,
-            'receiver_id': receiver_id,
-            'status': 'pending'
-        })
-        .execute()
-    )
-    
-    return {'message': 'Friend request sent', 'request_id': new_request.data[0]['id']} # ------------ should be dict?
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f'Friend request failed: {str(e)}')
 
 
-@app.post('/api/accept_request')
+@app.post('/api/friend_request_{status}')
 @limiter.limit('20/minute')
-async def accept_friend_request(
+async def friend_request_update(
     request: Request,
     request_id: str,
+    status: str,
     current_user: User = Depends(get_current_user)
 ):
-
     '''
-    Accept a friend request directed to the current user from another user.
+    Accept or reject a friend request directed to the current user from another user.
 
     Args:
         request (Request): Required for the SlowApi rate limiter to hook into it.
         request_id (str): UID of friend request in DB.
+        status (str): The status the friend request should be changed to passed in the API call.
         current_user (User): Authenticated User class of user recieving the request.
 
     Returns:
@@ -224,110 +241,133 @@ async def accept_friend_request(
     Raises:
         HTTPException: If the request doesn't exist.
     '''
+    try:
+        request = (
+            supabase_client.table('friend_requests')
+            .select('*')
+            .eq('id', request_id)
+            .execute()
+        )
+        if not request.data:
+            raise HTTPException(status_code=404, detail='Request not found') 
+        
+        match status:
+            case 'accepted':
+                accepted_request = (
+                    supabase_client.table('friend_requests')
+                    .update({'status': 'accepted'})
+                    .eq('id', request_id)
+                    .execute()
+                )
+                response = (
+                    supabase_client.table('friends')
+                    .insert({
+                        'user_id': current_user.id,
+                        'friend_id': accepted_request.data[0]['sender_id'],
+                    })
+                    .execute()
+                )
+            case 'rejected':
+                reject_request = (
+                    supabase_client.table('friend_requests')
+                    .delete()
+                    .eq('id', request_id)
+                    .execute()
+                )
+            case _:
+                raise HTTPException(status_code=404, detail='Friend request update has an invalid parameter type')
+        
+        return {'message': f'Friend {status}'} 
 
-    request = (
-        supabase_client.table('friend_requests')
-        .select('*')
-        .eq('id', request_id)
-        .execute()
-    )
-    if not request.data:
-        raise HTTPException(status_code=404, detail='Request not found') # ---------------decide if these should be one line or two line
-    
-    accept_request = (
-        supabase_client.table('friend_requests')
-        .update({'status': 'accepted'})
-        .eq('id', request_id)
-        .execute()
-    )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f'Friend request update failed: {str(e)}')
 
-    add_friend = (
-        supabase_client.table('friends')
-        .insert({
-            'user_id': current_user.id,
-            'friend_id': accept_request.data[0]['sender_id'],
-        })
-        .execute()
-    )
-    
-    return {'message': 'Friend accepted', 'user_id': add_friend.data[0]['friend_id']} # ------------ should be dict?
 
-@app.post('/api/reject_request')
+
+
+@app.post('/api/remove_friend')
 @limiter.limit('20/minute')
-async def reject_friend_request(
+async def remove_friend(
     request: Request,
-    request_id: str,
+    friend_id: str,
     current_user: User = Depends(get_current_user)
 ):
 
     '''
-    Reject a friend request sent to the current user from another user.
+    Remove a friend from the current user.
 
     Args:
         request (Request): Required for the SlowApi rate limiter to hook into it.
-        request_id (str): UID of friend request in DB.
+        friend_id (str): UID of friend in DB.
         current_user (User): Authenticated User class of user recieving the request.
 
     Returns:
         dict: Status of operation.
 
     Raises:
-        HTTPException: If the request doesn't exist.
+        HTTPException: If the friend doesn't exist.
     '''
+    try:
+        remove_friend = (
+            supabase_client.table('friends')
+            .delete()
+            .or_(
+                f'user_id.eq.{friend_id},'
+                + f'friend_id.eq.{current_user.id},'
+                + f'user_id.eq.{current_user.id},'
+                + f'friend_id.eq.{friend_id}'
+            )
+            .execute()
+        )
 
-    request = (
-        supabase_client.table('friend_requests')
-        .select('*')
-        .eq('id', request_id)
-        .execute()
-    )
-    if not request.data:
-        raise HTTPException(status_code=404, detail='Request not found') # ---------------decide if these should be one line or two line
-    
-    reject_request = (
-        supabase_client.table('friend_requests')
-        .delete()
-        .eq('id', request_id)
-        .execute()
-    )
+        if not remove_friend.data:
+            raise HTTPException(status_code=404, detail='Friend not found') 
 
-    return {'message': 'Friend request rejected'}
+        return {'message': 'Friend removed'}
 
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f'Collection of {request_type} failed: {str(e)}')
 
-@app.get('/remove_friend')
-def remove_friend(user, friend):
-    pass
-
-# ------------------- look for how auth will be implemented and adjust this function/pipeline accordingly
-@app.get('/create_user')
-def create_user(user_id):
-
-    response = (
-        supabase_client.table('users')
-        .insert({
-            'id': user_id
-        })
-        .execute()
-    )
-
-    return 1
 
 # ----------- insecure update function. Adjust accordingly (probably just have specific function names for it)
-@app.get('/update_user/')
-def update_user(user_id, col_name, data):
+@app.get('/api/update_username/')
+@limiter.limit('20/minute')
+async def update_username(
+    request: Request,
+    new_username: str,
+    current_user: User = Depends(get_current_user)
+):
+    '''
 
-    response_incoming_friend_ids = (
-        supabase_client.table('users')
-        .update({col_name: data})
-        .eq('id', user_id)
-        .execute()
-    )
+    '''
+    try:
+        updated_username = (
+            supabase_client.table('profiles')
+            .eq('id', current_user.id)
+            .update('username', new_username)
+            .execute()
+        )
 
-    return 1
+        if not updated_username.data:
+            raise HTTPException(status_code=404, detail='User not found') 
+
+        return {'message': 'Username updated'}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f'Username update failed: {str(e)}')
 
 
-@app.get('/collect_outgoing')
-async def collect_outgoing_requests(
+@app.get('/api/collect_{request_type}')
+@limiter.limit('40/minute')
+async def collect_requests(
+    request: Request,
+    request_type: str,
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     current_user: User = Depends(get_current_user)
@@ -338,37 +378,45 @@ async def collect_outgoing_requests(
 
     try:
 
+        match request_type:
+            case 'outgoing':
+                gather, equal = 'receiver_id', 'sender_id'
+            case 'incoming':
+                gather, equal = 'sender_id', 'receiver_id'
+            case _:
+                raise HTTPException(status_code=404, detail='Collection request has an invalid parameter type')
+
         friend_ids = (
             supabase_client.table('friend_requests')
-            .select('reciever_id')
+            .select(gather)
             .limit(limit)
             .offset(offset)
-            .eq('sender_id', user_id)
+            .eq(equal, current_user.id)
             .execute()
         )
-        if friend_requests.data == None:
+        if friend_ids.data == None:
             raise HTTPException(status_code=404, detail='Zero outgoing requests found.')
 
+        ids = [item[gather] for item in friend_ids.data]
         users = (
             supabase_client.table('profiles')
-            .select('*')
-            .in_('id', friend_ids.data)
+            .select('id, username, pfp_url')
+            .in_('id', ids)
             .execute()
         )
         
         return users
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f'Collection of outgoing failed: {str(e)}')
-
-
-@app.get('/collect_incoming')
-def collect_incoming(user_id):
-    pass
+        raise HTTPException(status_code=500, detail=f'Collection of {request_type} failed: {str(e)}')
 
 
 @app.get('/api/search_users')
+@limiter.limit('20/minute')
 async def search_users(
+    request: Request,
     query: str = Query(..., min_length=1, max_length=50),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -391,8 +439,8 @@ async def search_users(
     '''
     try:
         search_query = (
-            supabase.table('profiles')
-            .select('id, username')
+            supabase_client.table('profiles')
+            .select('id, username, pfp_url')
             .or_(f'username.ilike.%{query}%')
             .order('username')
             .limit(limit)
@@ -409,12 +457,14 @@ async def search_users(
             'has_more': len(search_query.data) == limit
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f'Search failed: {str(e)}')
 
 
-@app.get('/get_song')
-def get_song(song_url):
+@app.get('/api/get_song')
+async def get_song(song_url):
 
     song_preview = None
     spotify_song_id = None
@@ -440,7 +490,7 @@ def get_song(song_url):
         deezer_song_url = f'https://api.deezer.com/track/{deezer_song_id}'
         deezer_song = requests.get(deezer_song_url).json()
 
-        if lower(deezer_song['artist']['name']) == lower(song['artists'][0]['name']):
+        if deezer_song['artist']['name'].lower() == song['artists'][0]['name'].lower():
             song_preview = deezer_song['preview']
 
     except Exception as e:
