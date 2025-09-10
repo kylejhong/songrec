@@ -13,18 +13,18 @@ import { useAuth } from '@/contexts/AuthContext';
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 type UserData = {
-  id: number,
+  id: string,
   username: string,
-  profile_picture_url: string,
-  incoming_requests: string[],
-  friends: string[],
-  requested: boolean,
-  friended: boolean,
+  pfp_url: string,
+  created_at: Date,
+  updated_at: Date,
+  request_id: string,
+  request_status: string,
 }
 
 function Search({ searchQuery, setSearchQuery, searchList, setSearchList, getSearch, refreshAll, refreshing, onRefresh, isKeyboardVisible }) {
   const GlobalStyles = useGlobalStyles();
-  const { user } = useAuth();
+  const { user, authFetch } = useAuth();
 
   useEffect(() => {
     getSearch();
@@ -71,10 +71,10 @@ function Search({ searchQuery, setSearchQuery, searchList, setSearchList, getSea
               key={u.id}
               id={u.id}
               username={u.username}
-              image={u.profile_picture_url}
+              image={u.pfp_url}
               onRequestSent={refreshAll}
-              friended={u.friended}
-              requested={u.requested}
+              requestId={u.request_id}
+              requestStatus={u.request_status}
             />
           ))
         ) : null}
@@ -85,7 +85,7 @@ function Search({ searchQuery, setSearchQuery, searchList, setSearchList, getSea
 
 function Incoming({ incomingList, setIncomingList, getIncoming, refreshing, onRefresh, refreshAll }) {
   const GlobalStyles = useGlobalStyles();
-  const { user } = useAuth();
+  const { user, authFetch } = useAuth();
 
   useEffect(() => {
     getIncoming();
@@ -113,8 +113,9 @@ function Incoming({ incomingList, setIncomingList, getIncoming, refreshing, onRe
               key={user.id}
               id={user.id}
               username={user.username}
-              image={user.profile_picture_url}
+              image={user.pfp_url}
               onRequestSent={refreshAll}
+              requestId={user.request_id}
             />
           ))
         ) : (
@@ -155,8 +156,9 @@ function Outgoing({ outgoingList, setOutgoingList, getOutgoing, refreshing, onRe
               key={user.id}
               id={user.id}
               username={user.username}
-              image={user.profile_picture_url}
+              image={user.pfp_url}
               onRequestSent={refreshAll}
+              requestId={user.request_id}
             />
           ))
         ) : (
@@ -170,7 +172,7 @@ function Outgoing({ outgoingList, setOutgoingList, getOutgoing, refreshing, onRe
 const Friends = () => {
   const layout = useWindowDimensions();
   const GlobalStyles = useGlobalStyles();
-  const { user } = useAuth();
+  const { user, authFetch } = useAuth();
 
   const [index, setIndex] = useState(0);
   const [searchList, setSearchList] = useState<UserData[]>([]);
@@ -214,9 +216,8 @@ const Friends = () => {
   const getIncoming = async () => {
     try {
       const url = new URL(`${API_URL}/collect_incoming`);
-      url.searchParams.append('user_id', `${user.id}`);
 
-      const response = await fetch(url);
+      const response = await authFetch(url);
       const data = await response.json();
 
       setIncomingList(prevList => [...data]);
@@ -228,9 +229,8 @@ const Friends = () => {
   const getOutgoing = async () => {
     try {
       const url = new URL(`${API_URL}/collect_outgoing`);
-      url.searchParams.append('user_id', `${user.id}`);
 
-      const response = await fetch(url);
+      const response = await authFetch(url);
       const data = await response.json();
 
       setOutgoingList(prevList => [...data]);
@@ -254,11 +254,11 @@ const Friends = () => {
   const getSearch = async () => {
     try {
       const url = new URL(`${API_URL}/get_recommendations`);
-      url.searchParams.append('user_id', `${user.id}`);
-      url.searchParams.append('current_hash', 'test');
-      url.searchParams.append('input', searchQuery);
+      url.searchParams.append('query', searchQuery); //TODAY - query has a max char limit of 50 so handle later
+      url.searchParams.append('limit', '10');
+      url.searchParams.append('offset', '0');
 
-      const response = await fetch(url);
+      const response = await authFetch(url);
       const data = await response.json();
 
       const newData = data.map((u: any) => ({

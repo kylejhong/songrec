@@ -35,7 +35,7 @@ async function pasteFromClipboard(setSearchQuery) {
 
 const AddSong = () => {
   const GlobalStyles = useGlobalStyles();
-  const { user } = useAuth();
+  const { user, authFetch } = useAuth();
   const [open, setOpen] = useState(false);
   const [showContent, setShowContent] = useState(false);
   const [song, setSong] = useState<Song | null>(null);
@@ -69,7 +69,7 @@ const AddSong = () => {
 
         console.log(url);
 
-        const response = await fetch(url);
+        const response = await authFetch(url);
         const data = await response.json();
 
         setSong(data as Song);

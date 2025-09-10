@@ -15,7 +15,7 @@ const Username = () => {
     const router = useRouter();
     const [username, setUsername] = useState('');
     const [error, setError] = useState<String | null>(null);
-    const { user } = useAuth();
+    const { user, authFetch } = useAuth();
 
     const handleAuth = async () => {
         if (!username.trim()) {
@@ -24,13 +24,11 @@ const Username = () => {
         }
 
         const url = new URL(`${API_URL}/update_user`);
-        url.searchParams.append('user_id', `${user.id}`);
-        url.searchParams.append('col_name', `username`);
-        url.searchParams.append('data', `${username}`);
+        url.searchParams.append('new_username', `${username}`);
 
         console.log(url);
 
-        const response = await fetch(url);
+        const response = await authFetch(url);
 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);

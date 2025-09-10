@@ -8,7 +8,7 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL;
 
 const FriendCard = (props: any) => {
     const GlobalStyles = useGlobalStyles();
-    const { user } = useAuth();
+    const { user, authFetch } = useAuth();
     const id = user?.id;
 
     const [buttonText, setButtonText] = useState("");
@@ -17,17 +17,21 @@ const FriendCard = (props: any) => {
     useEffect(() => {
         switch (props.state) {
             case 'search':
-                if (props.friended) {
-                    setButtonText("Added");
-                    setClicked(true);
-                } else if (props.requested) {
-                    setButtonText("Requested");
-                    setClicked(true);
-                } else {
-                    setButtonText("Add Friend");
-                    setClicked(false);
+                switch (props.request_id) {
+                    case 'friended':
+                        setButtonText("Added");
+                        setClicked(true);
+                        break;
+                    case 'outgoing':
+                        setButtonText("Requested");
+                        setClicked(true);
+                        break;
+                    case 'incoming':
+                        //do later
+                    default:
+                        setButtonText("Add Friend");
+                        break;
                 }
-                break;
             case 'incoming':
                 setButtonText("Accept");
                 break;
@@ -62,10 +66,9 @@ const FriendCard = (props: any) => {
             setClicked(true);
 
             const url = new URL(`${API_URL}/friend_request`);
-            url.searchParams.append('requester', `${id}`);
-            url.searchParams.append('accepter', `${props.id}`);
+            url.searchParams.append('receiver_id', `${props.id}`);
 
-            const response = await fetch(url);
+            const response = await authFetch(url);
 
             if (!response.ok) {
                 throw new Error(`Server error: ${response.status} ${response.statusText}`);
@@ -86,11 +89,10 @@ const FriendCard = (props: any) => {
             setButtonText("Pending");
             setClicked(true);
 
-            const url = new URL(`${API_URL}/accept_request`);
-            url.searchParams.append('accepter', `${id}`);
-            url.searchParams.append('requester', `${props.id}`);
+            const url = new URL(`${API_URL}/friend_request_accept`);
+            url.searchParams.append('request_id', `${props.request_id}`);
 
-            const response = await fetch(url);
+            const response = await authFetch(url);
 
             if (!response.ok) {
                 throw new Error(`Server error: ${response.status} ${response.statusText}`);
@@ -110,10 +112,9 @@ const FriendCard = (props: any) => {
             setClicked(true);
 
             const url = new URL(`${API_URL}/remove_friend`);
-            url.searchParams.append('user', `${id}`);
-            url.searchParams.append('friend', `${props.id}`);
+            url.searchParams.append('friend_id', `${props.id}`);
 
-            const response = await fetch(url);
+            const response = await authFetch(url);
 
             if (!response.ok) {
                 throw new Error(`Server error: ${response.status} ${response.statusText}`);
@@ -127,22 +128,14 @@ const FriendCard = (props: any) => {
         }
     }
 
-    const rejectRequest = async (rescind: boolean = false) => {
+    const rejectRequest = async () => {
         try {
-            const url = new URL(`${API_URL}/reject_request`);
-            if (rescind) {
-                url.searchParams.append('accepter', `${props.id}`);
-                url.searchParams.append('requester', `${id}`);
-            } else {
-                url.searchParams.append('accepter', `${id}`);
-                url.searchParams.append('requester', `${props.id}`);
-            }
+            const url = new URL(`${API_URL}/friend_request_reject`);
+            url.searchParams.append('request_id', `${props.request_id}`);
 
             console.log(url);
 
             const response = await fetch(url);
-
-            console.log(response + "poobly");
 
             if (!response.ok) {
                 throw new Error(`Server error: ${response.status} ${response.statusText}`);
@@ -166,7 +159,7 @@ const FriendCard = (props: any) => {
                 <Text style={[GlobalStyles.text, styles.text]}>
                     <Text style={styles.boldText}>{` ${props.username}`}</Text>
                 </Text>
-                <TouchableOpacity style={ clicked ? [styles.button, styles.buttonGray] : [styles.button, styles.buttonOrange] } onPress={ props.friended ?  () => {confirmPopup("Remove friend?", "", () => {removeFriend()})} : props.requested ? () => {confirmPopup("Cancel request?", "", () => {rejectRequest(true)})} : sendRequest }>
+                <TouchableOpacity style={ clicked ? [styles.button, styles.buttonGray] : [styles.button, styles.buttonOrange] } onPress={ props.friended ?  () => {confirmPopup("Remove friend?", "", () => {removeFriend()})} : props.requested ? () => {confirmPopup("Cancel request?", "", () => {rejectRequest()})} : sendRequest }>
                     <Text style={ clicked ? [styles.buttonText, styles.white] : [styles.buttonText] }>{buttonText}</Text>
                 </TouchableOpacity>
             </View>
@@ -203,7 +196,7 @@ const FriendCard = (props: any) => {
                 <Text style={[GlobalStyles.text, styles.text]}>
                     <Text style={styles.boldText}>{` ${props.username}`}</Text>
                 </Text>
-                <TouchableOpacity style={ [styles.button, styles.buttonGray] } onPress={ () => {confirmPopup("Cancel Request?", "", () => {rejectRequest(true)})} }>
+                <TouchableOpacity style={ [styles.button, styles.buttonGray] } onPress={ () => {confirmPopup("Cancel Request?", "", () => {rejectRequest()})} }>
                     <Text style={ [styles.buttonText, styles.white] }>Requested</Text>
                 </TouchableOpacity>
             </View>

@@ -46,7 +46,7 @@ const AuthScreen = () => {
 
                 setError(null);
 
-                const url = new URL(`${API_URL}/create_user`);
+                /*const url = new URL(`${API_URL}/create_user`);
                 url.searchParams.append('user_id', `${user.user.id}`);
 
                 console.log(url);
@@ -55,7 +55,7 @@ const AuthScreen = () => {
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                }*/
                 
                 router.replace('/auth/username');
                 console.log('usaname!');

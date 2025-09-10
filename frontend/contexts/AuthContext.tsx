@@ -4,27 +4,32 @@ import { supabase } from '../supabaseConfig';
 
 type AuthContextType ={
     user: User | null;
+    token: string | null;
     loading: boolean;
     signInPhone: (phoneNumber: string) => Promise<any>;
     login: (email: string, password: string) => Promise<any>;
     register: (email: string, password: string) => Promise<any>;
     logout: () => Promise<void>;
+    authFetch: (url: string | URL, options?: RequestInit) => Promise<Response>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
+    const [token, setToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const session = supabase.auth.getSession().then(({ data }) => {
             setUser(data.session?.user ?? null);
+            setToken(data.session?.access_token ?? null);
             setLoading(false);
         });
 
         const { data:authListener } = supabase.auth.onAuthStateChange((_event, session) => {
             setUser(session?.user ?? null);
+            setToken(session?.access_token ?? null);
             setLoading(false);
         });
 
@@ -32,6 +37,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             authListener.subscription.unsubscribe();
         }
     }, []);
+
+    const authFetch = async (url: string | URL, options: RequestInit = {}) => {
+        const headers = {
+            ...options.headers,
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        };
+
+        const response = await fetch(url, { ...options, headers });
+        return response;
+    };
 
     const signInPhone = async (phoneNumber: string) => {
         return supabase.auth.signInWithOtp({ phone: phoneNumber });
@@ -68,11 +83,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         <AuthContext.Provider
         value={{
             user,
+            token,
             loading,
             signInPhone,
             login,
             register,
             logout,
+            authFetch,
         }}
         >
         {children}
