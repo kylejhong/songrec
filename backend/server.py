@@ -5,8 +5,6 @@
 
 # to-do:
 # logging
-# user creation/sign-up logic 
-# add error catching (try except) to every function
 
 import os
 import sys
@@ -90,18 +88,11 @@ class User(pydantic.BaseModel):
     updated_at: datetime
 
     def to_json(self): 
-        return json.dumps(
-            self,
-            default=lambda o: o.__dict__, 
-            sort_keys=True,
-            indent=4
-        )
-
+        return self.model_dump_json(indent=4)
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> User:
-
     '''
     Obtain the current user data through a validated JWT token.
     This is called in every API function argument.
@@ -115,7 +106,6 @@ async def get_current_user(
     Raises:
         HTTPException: If credentials are invalid or user is not found.
     '''
-
     token = credentials.credentials
     
     try:
@@ -146,7 +136,7 @@ async def get_current_user(
         
     except HTTPException:
         raise
-    except InvalidTokenError as e: # properly look into the erros and exceptions of this function
+    except InvalidTokenError as e: 
         raise HTTPException(status_code=401, detail='Invalid authentication credentials')
 
 
@@ -285,8 +275,6 @@ async def friend_request_update(
         raise HTTPException(status_code=500, detail=f'Friend request update failed: {str(e)}')
 
 
-
-
 @app.post('/api/remove_friend')
 @limiter.limit('20/minute')
 async def remove_friend(
@@ -333,7 +321,6 @@ async def remove_friend(
         raise HTTPException(status_code=500, detail=f'Collection of {request_type} failed: {str(e)}')
 
 
-# ----------- insecure update function. Adjust accordingly (probably just have specific function names for it)
 @app.get('/api/update_username/')
 @limiter.limit('20/minute')
 async def update_username(

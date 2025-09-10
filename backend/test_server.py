@@ -182,6 +182,19 @@ class TestClass(unittest.TestCase):
         )
         assert response.status_code == 200
 
+    def test_get_my_profile(self):
+        response = self.client.get(
+            '/api/my-profile',
+            headers={'Authorization': f'Bearer {
+                create_test_token(
+                    user_id=os.getenv('DB_TEST_ID_1'), 
+                    username=os.getenv('DB_TEST_USERNAME_1')
+                )
+            }'},
+        )
+        assert response.status_code == 200
+
+
     def test_spotify_url(self):
         response = self.client.get(
             '/api/get_song',
