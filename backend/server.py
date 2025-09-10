@@ -51,6 +51,11 @@ spotify_client = spotipy.Spotify(client_credentials_manager=client_credentials)
 limiter = slowapi.Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 
+@app.middleware("http")
+async def log_headers(request: Request, call_next):
+    print(dict(request.headers))
+    return await call_next(request)
+
 if 'unittest' in sys.modules: 
 
     with open('test_keys.json', 'r') as f:
