@@ -52,6 +52,20 @@ class TestClass(unittest.TestCase):
         self.client = TestClient(app)
         self.friend_request_id = None
 
+    def cleanup_test_users(self):
+        response = (
+            supabase_client.table('friend_requests')
+            .delete()
+            .eq('sender_id', os.getenv('DB_TEST_ID_1'))
+            .execute()
+        )
+        response = (
+            supabase_client.table('friends')
+            .delete()
+            .eq('user_id', os.getenv('DB_TEST_ID_2'))
+            .execute()
+        )
+
     def test_ping_endpoint_exists(self):
         response = self.client.post('/api/ping')
         assert response.status_code == 200
@@ -67,30 +81,18 @@ class TestClass(unittest.TestCase):
         response = self.client.post('/api/auth_ping')
         assert response.status_code == 403
 
-    def cleanup_test_users(self):
-        response = (
-            supabase_client.table('friend_requests')
-            .delete()
-            .eq('sender_id', os.getenv('DB_TEST_ID_1'))
-            .execute()
-        )
-        response = (
-            supabase_client.table('friends')
-            .delete()
-            .eq('user_id', os.getenv('DB_TEST_ID_2'))
-            .execute()
-        )
-
     def test_friend_request(self):
+        self.cleanup_test_users()
         response = self.client.post(
             '/api/friend_request',
             headers={'Authorization': f'Bearer {create_test_token()}'},
             params={'receiver_id': os.getenv('DB_TEST_ID_2')}
         )
-        self.friend_request_id = response['request_id']
+        self.friend_request_id = response.json()['request_id']
         assert response.status_code == 200
 
     def test_already_requested(self):
+        self.test_friend_request()
         response = self.client.post(
             '/api/friend_request',
             headers={'Authorization': f'Bearer {create_test_token()}'},
@@ -99,8 +101,9 @@ class TestClass(unittest.TestCase):
         assert response.status_code == 400
 
     def test_reject_request(self):
+        self.test_friend_request()
         response = self.client.post(
-            '/api/reject_request',
+            '/api/friend_request_rejected',
             headers={'Authorization': f'Bearer {
                 create_test_token(
                     user_id=os.getenv('DB_TEST_ID_2'), 
@@ -112,13 +115,9 @@ class TestClass(unittest.TestCase):
         assert response.status_code == 200
 
     def test_accept_request(self):
+        self.test_friend_request()
         response = self.client.post(
-            '/api/friend_request',
-            headers={'Authorization': f'Bearer {create_test_token()}'},
-            params={'receiver_id': os.getenv('DB_TEST_ID_2')}
-        )
-        response = self.client.post(
-            '/api/accept_request',
+            '/api/friend_request_accepted',
             headers={'Authorization': f'Bearer {
                 create_test_token(
                     user_id=os.getenv('DB_TEST_ID_2'), 
@@ -129,20 +128,86 @@ class TestClass(unittest.TestCase):
         )
         assert response.status_code == 200
 
-    def test_already_friends(self):
+    def test_remove_friend(self):
+        self.test_accept_request()
         response = self.client.post(
-            '/api/accept_request',
+            '/api/remove_friend',
+            headers={'Authorization': f'Bearer {
+                create_test_token(
+                    user_id=os.getenv('DB_TEST_ID_1'), 
+                    username=os.getenv('DB_TEST_USERNAME_1')
+                )
+            }'},
+            params={'friend_id': os.getenv('DB_TEST_ID_2')}
+        )
+        assert response.status_code == 200
+
+    def test_collect_outgoing(self):
+        self.test_friend_request()
+        response = self.client.get(
+            '/api/collect_outgoing',
+            headers={'Authorization': f'Bearer {
+                create_test_token(
+                    user_id=os.getenv('DB_TEST_ID_1'), 
+                    username=os.getenv('DB_TEST_USERNAME_1')
+                )
+            }'},
+        )
+        assert response.status_code == 200
+
+    def test_collect_incoming(self):
+        self.test_friend_request()
+        response = self.client.get(
+            '/api/collect_incoming',
             headers={'Authorization': f'Bearer {
                 create_test_token(
                     user_id=os.getenv('DB_TEST_ID_2'), 
                     username=os.getenv('DB_TEST_USERNAME_2')
                 )
             }'},
-            params={'request_id': self.friend_request_id}
         )
-        assert response.status_code == 400
+        assert response.status_code == 200
+
+    def test_search_users(self):
+        self.cleanup_test_users()
+        response = self.client.get(
+            '/api/search_users',
+            headers={'Authorization': f'Bearer {
+                create_test_token(
+                    user_id=os.getenv('DB_TEST_ID_1'), 
+                    username=os.getenv('DB_TEST_USERNAME_1')
+                )
+            }'},
+            params={'query': os.getenv('DB_TEST_USERNAME_2')}
+        )
+        assert response.status_code == 200
+
+    def test_get_my_profile(self):
+        response = self.client.get(
+            '/api/my-profile',
+            headers={'Authorization': f'Bearer {
+                create_test_token(
+                    user_id=os.getenv('DB_TEST_ID_1'), 
+                    username=os.getenv('DB_TEST_USERNAME_1')
+                )
+            }'},
+        )
+        assert response.status_code == 200
 
 
+    def test_spotify_url(self):
+        response = self.client.get(
+            '/api/get_song',
+            headers={'Authorization': f'Bearer {
+                create_test_token(
+                    user_id=os.getenv('DB_TEST_ID_1'), 
+                    username=os.getenv('DB_TEST_USERNAME_1')
+                )
+            }'},
+            params={'song_url': 'https://open.spotify.com/track/7sam5WsFimXgFOCuEOc90x?si=yiq89xsaTTSqMQudd9cvoQ'}
+        )
+        assert response.status_code == 200
+        assert response.json()['preview_url'] != None
 
 if __name__ == '__main__':
     unittest.main()
