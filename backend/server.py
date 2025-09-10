@@ -90,6 +90,9 @@ class User(pydantic.BaseModel):
     def to_json(self): 
         return self.model_dump_json(indent=4)
 
+    def to_dict(self):
+        return self.model_dump()
+
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
@@ -116,7 +119,7 @@ async def get_current_user(
             get_public_key(),
             algorithms=['ES256'],
             audience='authenticated',
-            issuer='supabase'
+            issuer='https://nqzgjbhzoosakyyelwzs.supabase.co/auth/v1'   
         )
 
         user_id = payload.get('sub') 
@@ -135,7 +138,8 @@ async def get_current_user(
         
         return User(**user_data.data[0])
         
-    except HTTPException:
+    except HTTPException as e:
+        print(f'test error: {e}')
         raise
     except InvalidTokenError as e: 
         raise HTTPException(status_code=401, detail='Invalid authentication credentials')
@@ -147,7 +151,7 @@ async def get_my_profile(
     request: Request,
     current_user: User = Depends(get_current_user)
 ):
-    return current_user.to_json()
+    return current_user.to_dict()
 
 
 @app.post('/api/friend_request')
@@ -243,7 +247,7 @@ async def friend_request_update(
             raise HTTPException(status_code=404, detail='Request not found') 
         
         match status:
-            case 'accepted':
+            case 'accept':
                 accepted_request = (
                     supabase_client.table('friend_requests')
                     .update({'status': 'accepted'})
@@ -258,7 +262,7 @@ async def friend_request_update(
                     })
                     .execute()
                 )
-            case 'rejected':
+            case 'reject':
                 reject_request = (
                     supabase_client.table('friend_requests')
                     .delete()
@@ -345,13 +349,13 @@ async def update_username(
     try:
         updated_username = (
             supabase_client.table('profiles')
+            .update({'username': new_username})
             .eq('id', current_user.id)
-            .update('username', new_username)
             .execute()
         )
 
         if not updated_username.data:
-            raise HTTPException(status_code=404, detail='User not found') 
+            raise HTTPException(status_code=404, detail='User not found')
 
         return {'message': 'Username updated'}
     
@@ -366,8 +370,6 @@ async def update_username(
 async def collect_requests(
     request: Request,
     request_type: str,
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
     current_user: User = Depends(get_current_user)
 ):
     '''
@@ -376,8 +378,6 @@ async def collect_requests(
     Args:
         request (Request): Required for the SlowApi rate limiter to hook into it.
         request_type (str): Either incoming or outgoing.
-        limit (int): Maximum number of users to return. Defaults to 20. Must be between 1 and 100.
-        offset (int): Number of requests to skip before starting to return results. Defaults to 0. 
         current_user (User): Authenticated User class of user recieving the request.
 
     Returns:
@@ -387,6 +387,11 @@ async def collect_requests(
         HTTPException: If the api request has a invalid request_type or if 0 requests found
     '''
     try:
+        # ---------------------------------------------- request_status --------------------------------
+        # None
+        # Friended
+        # Outgoing
+        # Incoming
 
         match request_type:
             case 'outgoing':
@@ -399,8 +404,6 @@ async def collect_requests(
         friend_ids = (
             supabase_client.table('friend_requests')
             .select(gather)
-            .limit(limit)
-            .offset(offset)
             .eq(equal, current_user.id)
             .execute()
         )
@@ -410,7 +413,7 @@ async def collect_requests(
         ids = [item[gather] for item in friend_ids.data]
         users = (
             supabase_client.table('profiles')
-            .select('id, username, pfp_url')
+            .select('id, username, pfp_url') # ------------------------------------ return request id
             .in_('id', ids)
             .execute()
         )
@@ -447,22 +450,80 @@ async def search_users(
     Raises:
         HTTPException: If returned zero results or on error.
     '''
+    return 'test'
     try:
         search_query = (
-            supabase_client.table('profiles')
-            .select('id, username, pfp_url')
+            supabase_client.table('profiles') # --------------------------------------- return request status per user
+            .select('id, username, pfp_url') # --------------------------- pass in request id as well
             .or_(f'username.ilike.%{query}%')
             .order('username')
             .limit(limit)
             .offset(offset)
             .execute()
         )
-
         if search_query.data == None: 
             raise HTTPException(status_code=404, detail='Search returned zero results')
+
+        profiles = search_query.data
+        profile_ids = [profile['id'] for profile in profiles]
+
+        outgoing_response = (
+            supabase_client
+            .from_('friend_requests')
+            .select('receiver_id')
+            .eq('sender_id', current_user.id)
+            .in_('receiver_id', profile_ids)
+            .execute()
+        )
+        outgoing_ids = {req['receiver_id'] for req in outgoing_response.data}
+        
+
+        incoming_response = (
+            supabase_client
+            .from_('friend_requests')
+            .select('sender_id')
+            .eq('receiver_id', current_user.id)
+            .in_('sender_id', profile_ids)
+            .execute()
+        )
+        incoming_ids = {req['sender_id'] for req in incoming_response.data}
+        
+
+        friends_response = (
+            supabase_client
+            .from_('friends')
+            .select('user_id, friend_id', 'id')
+            .or_(f'user_id.eq.{current_user.id},friend_id.eq.{current_user.id}')
+            .execute()
+        )
+
+        friend_ids = set()
+        for friendship in friends_response.data:
+            if friendship['user_id'] == current_user.id:
+                friend_ids.add(friendship['friend_id'])
+            else:
+                friend_ids.add(friendship['user_id'])
+        
+        results = []
+        for profile in profiles:
+            profile_id = profile['id']
+            
+            if profile_id in friend_ids:
+                request_status = 'friended'
+            elif profile_id in incoming_ids:
+                request_status = 'incoming'
+            elif profile_id in outgoing_ids:
+                request_status = 'outgoing'
+            else:
+                request_status = 'none'
+            
+            results.append({
+                **profile,
+                'request_status': request_status
+            })
         
         return {
-            'results': search_query.data,
+            'results': results,
             'total_count': len(search_query.data),
             'has_more': len(search_query.data) == limit
         }
@@ -472,7 +533,7 @@ async def search_users(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f'Search failed: {str(e)}')
 
-
+# PUT IN AUTH HERE -------------------------------------------------------------------------------------
 @app.get('/api/get_song')
 async def get_song(song_url):
 

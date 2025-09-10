@@ -27,12 +27,13 @@ supabase_client = supabase.create_client(
 )
 
 def create_test_token(user_id=os.getenv('DB_TEST_ID_1'), username=os.getenv('DB_TEST_USERNAME_1')):
+
     payload = {
         'sub': user_id,
         'username': username, 
         'role': 'authenticated',            
         'aud': 'authenticated',             
-        'iss': 'supabase',                  
+        'iss': 'https://nqzgjbhzoosakyyelwzs.supabase.co/auth/v1',                  
         'exp': (datetime.now(timezone.utc) + timedelta(hours=1)).timestamp(),
         'iat': (datetime.now(timezone.utc)).timestamp()
     }   
@@ -103,7 +104,7 @@ class TestClass(unittest.TestCase):
     def test_reject_request(self):
         self.test_friend_request()
         response = self.client.post(
-            '/api/friend_request_rejected',
+            '/api/friend_request_reject',
             headers={'Authorization': f'Bearer {
                 create_test_token(
                     user_id=os.getenv('DB_TEST_ID_2'), 
@@ -117,7 +118,7 @@ class TestClass(unittest.TestCase):
     def test_accept_request(self):
         self.test_friend_request()
         response = self.client.post(
-            '/api/friend_request_accepted',
+            '/api/friend_request_accept',
             headers={'Authorization': f'Bearer {
                 create_test_token(
                     user_id=os.getenv('DB_TEST_ID_2'), 
@@ -170,6 +171,7 @@ class TestClass(unittest.TestCase):
 
     def test_search_users(self):
         self.cleanup_test_users()
+        self.test_friend_request()
         response = self.client.get(
             '/api/search_users',
             headers={'Authorization': f'Bearer {
@@ -194,6 +196,37 @@ class TestClass(unittest.TestCase):
         )
         assert response.status_code == 200
 
+    def test_update_username(self):
+        response = self.client.get(
+            '/api/update_username',
+            headers={'Authorization': f'Bearer {
+                create_test_token(
+                    user_id=os.getenv('DB_TEST_ID_1'), 
+                    username=os.getenv('DB_TEST_USERNAME_1')
+                )
+            }'},
+            params={'new_username': 'new-username-test'}
+        )
+        assert response.status_code == 200
+        response = self.client.get(
+            '/api/my-profile',
+            headers={'Authorization': f'Bearer {
+                create_test_token(
+                    user_id=os.getenv('DB_TEST_ID_1'), 
+                    username='new-username-test'
+                )
+            }'},
+        )
+        assert response.json()['username'] == 'new-username-test'
+        response = self.client.get(
+            '/api/my-profile',
+            headers={'Authorization': f'Bearer {
+                create_test_token(
+                    user_id=os.getenv('DB_TEST_ID_1'), 
+                    username=os.getenv('DB_TEST_USERNAME_1')
+                )
+            }'},
+        )
 
     def test_spotify_url(self):
         response = self.client.get(
