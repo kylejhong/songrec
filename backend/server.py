@@ -90,6 +90,7 @@ class User(pydantic.BaseModel):
     def to_json(self): 
         return self.model_dump_json(indent=4)
 
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> User:
@@ -282,7 +283,6 @@ async def remove_friend(
     friend_id: str,
     current_user: User = Depends(get_current_user)
 ):
-
     '''
     Remove a friend from the current user.
 
@@ -329,7 +329,18 @@ async def update_username(
     current_user: User = Depends(get_current_user)
 ):
     '''
+    Updates the username of the user.
 
+    Args:
+        request (Request): Required for the SlowApi rate limiter to hook into it.
+        new_username (str): The new username to update to.
+        current_user (User): Authenticated User class of user recieving the request.
+
+    Returns:
+        dict: Status of operation.
+
+    Raises:
+        HTTPException: If the user doesn't exist. (unlikely)
     '''
     try:
         updated_username = (
@@ -360,9 +371,21 @@ async def collect_requests(
     current_user: User = Depends(get_current_user)
 ):
     '''
+    Collects the outgoing or incoming requests to the user.
 
+    Args:
+        request (Request): Required for the SlowApi rate limiter to hook into it.
+        request_type (str): Either incoming or outgoing.
+        limit (int): Maximum number of users to return. Defaults to 20. Must be between 1 and 100.
+        offset (int): Number of requests to skip before starting to return results. Defaults to 0. 
+        current_user (User): Authenticated User class of user recieving the request.
+
+    Returns:
+        dict: Status of operation.
+
+    Raises:
+        HTTPException: If the api request has a invalid request_type or if 0 requests found
     '''
-
     try:
 
         match request_type:
@@ -382,7 +405,7 @@ async def collect_requests(
             .execute()
         )
         if friend_ids.data == None:
-            raise HTTPException(status_code=404, detail='Zero outgoing requests found.')
+            raise HTTPException(status_code=404, detail='Zero requests found')
 
         ids = [item[gather] for item in friend_ids.data]
         users = (
@@ -403,7 +426,7 @@ async def collect_requests(
 @app.get('/api/search_users')
 @limiter.limit('20/minute')
 async def search_users(
-    request: Request,
+   request: Request,
     query: str = Query(..., min_length=1, max_length=50),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -414,8 +437,8 @@ async def search_users(
 
     Args:
         query (str): The user-entered string to search.
-        limit (int): ---------------------------------------------------------------------------
-        offset (int):
+        limit (int): Maximum number of users to return. Defaults to 20. Must be between 1 and 100.
+        offset (int): Number of requests to skip before starting to return results. Defaults to 0. 
         current_user (User): Authenticated User class of user sending the request.
 
     Returns:
@@ -443,7 +466,7 @@ async def search_users(
             'total_count': len(search_query.data),
             'has_more': len(search_query.data) == limit
         }
-        
+       
     except HTTPException:
         raise
     except Exception as e:
