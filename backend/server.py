@@ -51,10 +51,6 @@ spotify_client = spotipy.Spotify(client_credentials_manager=client_credentials)
 limiter = slowapi.Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 
-@app.middleware("http")
-async def log_headers(request: Request, call_next):
-    print(dict(request.headers))
-    return await call_next(request)
 
 if 'unittest' in sys.modules: 
 
@@ -72,7 +68,6 @@ else:
 
     def get_public_key():
         
-        print('gloob')
         response = requests.get(os.getenv('PUBLIC_JWT_KEY_URL'))
         response.raise_for_status()
 
@@ -103,7 +98,6 @@ class User(pydantic.BaseModel):
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> User:
-    print('gleeb')
     '''
     Obtain the current user data through a validated JWT token.
     This is called in every API function argument.
@@ -146,7 +140,6 @@ async def get_current_user(
         return User(**user_data.data[0])
         
     except HTTPException as e:
-        print(f'test error: {e}')
         raise
     except InvalidTokenError as e: 
         raise HTTPException(status_code=401, detail='Invalid authentication credentials')
@@ -436,8 +429,7 @@ async def collect_requests(
 @app.get('/api/search_users')
 @limiter.limit('20/minute')
 async def search_users(
-    return 'test'
-   request: Request,
+    request: Request,
     query: str = Query(..., min_length=1, max_length=50),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -458,7 +450,6 @@ async def search_users(
     Raises:
         HTTPException: If returned zero results or on error.
     '''
-    return 'test'
     try:
         search_query = (
             supabase_client.table('profiles') # --------------------------------------- return request status per user
