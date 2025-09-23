@@ -166,14 +166,14 @@ async def send_friend_request(
 
     Args:
         request (Request): Required for the SlowApi rate limiter to hook into it.
-        reciever_id (str): UID of user recieving the request.
+        receiver_id (str): UID of user receiving the request.
         current_user (User): Authenticated User class of user sending the request.
 
     Returns:
         dict: Status of operation
 
     Raises:
-        HTTPException: If reciever doesn't exist or request already exists
+        HTTPException: If receiver doesn't exist or request already exists
     '''
     try:
         receiver = (
@@ -186,17 +186,17 @@ async def send_friend_request(
             raise HTTPException(status_code=404, detail='Receiver not found') 
         
         existing_request = (
-            supabase_client.table('friend_requests')
-            .select('*')
+            supabase_client.table('relationships')
+            .select('id')
             .eq('sender_id', current_user.id)
             .eq('receiver_id', receiver_id)
             .execute()
-        )
+        ) # maybe write code to check for the flip of sender and receiver? --------------------
         if existing_request.data:
             raise HTTPException(status_code=400, detail='Friend request already sent')
         
         new_request = (
-            supabase_client.table('friend_requests')
+            supabase_client.table('relationships')
             .insert({
                 'sender_id': current_user.id,
                 'receiver_id': receiver_id,
@@ -205,19 +205,19 @@ async def send_friend_request(
             .execute()
         )
         
-        return {'message': 'Friend request sent', 'request_id': new_request.data[0]['id']} 
+        return {'message': 'Friend request sent', 'relation_id': new_request.data[0]['id']} 
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f'Friend request failed: {str(e)}')
+        raise HTTPException(status_code=500, detail=f'Friend request failed: {str(e)}') # remove error messages from sending to front-end
 
 
-@app.post('/api/friend_request_{status}')
+@app.post('/api/friend_relation_{status}')
 @limiter.limit('20/minute')
-async def friend_request_update(
+async def friend_relation_update(
     request: Request,
-    request_id: str,
+    relation_id: str,
     status: str,
     current_user: User = Depends(get_current_user)
 ):
@@ -226,9 +226,9 @@ async def friend_request_update(
 
     Args:
         request (Request): Required for the SlowApi rate limiter to hook into it.
-        request_id (str): UID of friend request in DB.
+        relation_id (str): UID of friend request in DB.
         status (str): The status the friend request should be changed to passed in the API call.
-        current_user (User): Authenticated User class of user recieving the request.
+        current_user (User): Authenticated User class of user receiving the request.
 
     Returns:
         dict: Status of operation.
@@ -238,9 +238,10 @@ async def friend_request_update(
     '''
     try:
         request = (
-            supabase_client.table('friend_requests')
+            supabase_client.table('relationships')
             .select('*')
-            .eq('id', request_id)
+            .eq('id', relation_id) # ------------------------------- check documentation to see if i can just remove the .select()
+            .limit(1) # ------------------- limit(1) or .single()? ------------------------
             .execute()
         )
         if not request.data:
@@ -249,26 +250,25 @@ async def friend_request_update(
         match status:
             case 'accept':
                 accepted_request = (
-                    supabase_client.table('friend_requests')
+                    supabase_client.table('relationships')
                     .update({'status': 'accepted'})
-                    .eq('id', request_id)
-                    .execute()
-                )
-                response = (
-                    supabase_client.table('friends')
-                    .insert({
-                        'user_id': current_user.id,
-                        'friend_id': accepted_request.data[0]['sender_id'],
-                    })
+                    .eq('id', relation_id)
                     .execute()
                 )
             case 'reject':
                 reject_request = (
-                    supabase_client.table('friend_requests')
+                    supabase_client.table('relationships')
                     .delete()
-                    .eq('id', request_id)
+                    .eq('id', relation_id)
                     .execute()
                 )
+            case 'remove':
+                reject_request = (
+                    supabase_client.table('relationships')
+                    .delete()
+                    .eq('id', relation_id)
+                    .execute()
+                ) # -------------------- add description part for removing friend
             case _:
                 raise HTTPException(status_code=404, detail='Friend request update has an invalid parameter type')
         
@@ -278,51 +278,6 @@ async def friend_request_update(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f'Friend request update failed: {str(e)}')
-
-
-@app.post('/api/remove_friend')
-@limiter.limit('20/minute')
-async def remove_friend(
-    request: Request,
-    friend_id: str,
-    current_user: User = Depends(get_current_user)
-):
-    '''
-    Remove a friend from the current user.
-
-    Args:
-        request (Request): Required for the SlowApi rate limiter to hook into it.
-        friend_id (str): UID of friend in DB.
-        current_user (User): Authenticated User class of user recieving the request.
-
-    Returns:
-        dict: Status of operation.
-
-    Raises:
-        HTTPException: If the friend doesn't exist.
-    '''
-    try:
-        remove_friend = (
-            supabase_client.table('friends')
-            .delete()
-            .or_(
-                f'user_id.eq.{friend_id},'
-                + f'friend_id.eq.{current_user.id},'
-                + f'user_id.eq.{current_user.id},'
-                + f'friend_id.eq.{friend_id}'
-            )
-            .execute()
-        )
-
-        if not remove_friend.data:
-            raise HTTPException(status_code=404, detail='Friend not found') 
-
-        return {'message': 'Friend removed'}
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f'Collection of {request_type} failed: {str(e)}')
 
 
 @app.get('/api/update_username/')
@@ -338,7 +293,7 @@ async def update_username(
     Args:
         request (Request): Required for the SlowApi rate limiter to hook into it.
         new_username (str): The new username to update to.
-        current_user (User): Authenticated User class of user recieving the request.
+        current_user (User): Authenticated User class of user receiving the request.
 
     Returns:
         dict: Status of operation.
@@ -378,7 +333,7 @@ async def collect_requests(
     Args:
         request (Request): Required for the SlowApi rate limiter to hook into it.
         request_type (str): Either incoming or outgoing.
-        current_user (User): Authenticated User class of user recieving the request.
+        current_user (User): Authenticated User class of user receiving the request.
 
     Returns:
         dict: Status of operation.
@@ -402,23 +357,22 @@ async def collect_requests(
                 raise HTTPException(status_code=404, detail='Collection request has an invalid parameter type')
 
         friend_ids = (
-            supabase_client.table('friend_requests')
-            .select(gather)
+            supabase_client.table('relationships')
+            .select(f'''
+                id:{gather},
+                status,
+                profiles!relationships_{gather}_fkey(
+                    username,
+                    pfp_url
+                )
+            ''')
             .eq(equal, current_user.id)
             .execute()
         )
         if friend_ids.data == None:
             raise HTTPException(status_code=404, detail='Zero requests found')
 
-        ids = [item[gather] for item in friend_ids.data]
-        users = (
-            supabase_client.table('profiles')
-            .select('id, username, pfp_url') # ------------------------------------ return request id
-            .in_('id', ids)
-            .execute()
-        )
-        
-        return users
+        return friend_ids.data
 
     except HTTPException:
         raise
@@ -453,7 +407,11 @@ async def search_users(
     try:
         search_query = (
             supabase_client.table('profiles') # --------------------------------------- return request status per user
-            .select('id, username, pfp_url') # --------------------------- pass in request id as well
+            .select(f''' 
+                id,
+                username,
+                pfp_url
+            ''') # --------------------------- pass in request id as well
             .or_(f'username.ilike.%{query}%')
             .order('username')
             .limit(limit)
@@ -463,66 +421,35 @@ async def search_users(
         if search_query.data == None: 
             raise HTTPException(status_code=404, detail='Search returned zero results')
 
-        profiles = search_query.data
-        profile_ids = [profile['id'] for profile in profiles]
+        user_ids = [user['id'] for user in search_query.data]
+        user_ids.append(current_user.id)
 
-        outgoing_response = (
-            supabase_client
-            .from_('friend_requests')
-            .select('receiver_id')
-            .eq('sender_id', current_user.id)
-            .in_('receiver_id', profile_ids)
-            .execute()
-        )
-        outgoing_ids = {req['receiver_id'] for req in outgoing_response.data}
-        
-
-        incoming_response = (
-            supabase_client
-            .from_('friend_requests')
-            .select('sender_id')
-            .eq('receiver_id', current_user.id)
-            .in_('sender_id', profile_ids)
-            .execute()
-        )
-        incoming_ids = {req['sender_id'] for req in incoming_response.data}
-        
-
-        friends_response = (
-            supabase_client
-            .from_('friends')
-            .select('user_id, friend_id', 'id')
-            .or_(f'user_id.eq.{current_user.id},friend_id.eq.{current_user.id}')
+        relationships_query = (
+            supabase_client.table('relationships')
+            .select('*')
+            .in_('sender_id', user_ids)
+            .in_('receiver_id', user_ids)
             .execute()
         )
 
-        friend_ids = set()
-        for friendship in friends_response.data:
-            if friendship['user_id'] == current_user.id:
-                friend_ids.add(friendship['friend_id'])
-            else:
-                friend_ids.add(friendship['user_id'])
-        
-        results = []
-        for profile in profiles:
-            profile_id = profile['id']
-            
-            if profile_id in friend_ids:
-                request_status = 'friended'
-            elif profile_id in incoming_ids:
-                request_status = 'incoming'
-            elif profile_id in outgoing_ids:
-                request_status = 'outgoing'
-            else:
-                request_status = 'none'
-            
-            results.append({
-                **profile,
-                'request_status': request_status
-            })
-        
+        # maybe worth switching from str to int relations? then to the lower uid on left and right column thing?
+            # maybe not since we have to look through the recieverid and senderid columns anyway for this sh*t. 
+        # instead of searching for the relations of the searched user, search the relations between the ACTUAL CURRENT USER
+        relationships_map = {}
+        for rel in relationships_query.data:
+            key = (rel['sender_id'], rel['receiver_id'])
+            relationships_map[key] = rel
+
+        for user in search_query.data:
+            user_id = user['id']
+            relationship = (relationships_map.get((current_user.id, user_id)) or 
+                           relationships_map.get((user_id, current_user.id)))
+            user['relationship_status'] = relationship['status'] if relationship else None
+
+        #for user in search_query.data:
+
         return {
-            'results': results,
+            'results': search_query.data,
             'total_count': len(search_query.data),
             'has_more': len(search_query.data) == limit
         }

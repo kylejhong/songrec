@@ -1,3 +1,5 @@
+# python -m unittest test_server.TestClass.test_method
+
 import os
 from dotenv import load_dotenv
 import json
@@ -51,9 +53,21 @@ class TestClass(unittest.TestCase):
 
     def setUp(self):
         self.client = TestClient(app)
-        self.friend_request_id = None
+        self.friend_response_id = None
 
     def cleanup_test_users(self):
+        response = (
+            supabase_client.table('relationships')
+            .delete()
+            .eq('sender_id', os.getenv('DB_TEST_ID_1'))
+            .execute()
+        )
+        response = (
+            supabase_client.table('friends')
+            .delete()
+            .eq('user_id', os.getenv('DB_TEST_ID_2'))
+            .execute()
+        )
         response = (
             supabase_client.table('friend_requests')
             .delete()
@@ -89,7 +103,7 @@ class TestClass(unittest.TestCase):
             headers={'Authorization': f'Bearer {create_test_token()}'},
             params={'receiver_id': os.getenv('DB_TEST_ID_2')}
         )
-        self.friend_request_id = response.json()['request_id']
+        self.friend_request_id = response.json()['relation_id']
         assert response.status_code == 200
 
     def test_already_requested(self):
@@ -104,42 +118,42 @@ class TestClass(unittest.TestCase):
     def test_reject_request(self):
         self.test_friend_request()
         response = self.client.post(
-            '/api/friend_request_reject',
+            '/api/friend_relation_reject',
             headers={'Authorization': f'Bearer {
                 create_test_token(
                     user_id=os.getenv('DB_TEST_ID_2'), 
                     username=os.getenv('DB_TEST_USERNAME_2')
                 )
             }'},
-            params={'request_id': self.friend_request_id} # 9/8/25 trying to fix this mess, turns out unit testing and integration testing have different names for a reason. unit test the song logic, integration test the user stuff. Currently adjusting each function to run somewhat independantly (supabase logic, then api call. rinse and repeat)
+            params={'relation_id': self.friend_request_id} # 9/8/25 trying to fix this mess, turns out unit testing and integration testing have different names for a reason. unit test the song logic, integration test the user stuff. Currently adjusting each function to run somewhat independantly (supabase logic, then api call. rinse and repeat)
         )
         assert response.status_code == 200
 
     def test_accept_request(self):
         self.test_friend_request()
         response = self.client.post(
-            '/api/friend_request_accept',
+            '/api/friend_relation_accept',
             headers={'Authorization': f'Bearer {
                 create_test_token(
                     user_id=os.getenv('DB_TEST_ID_2'), 
                     username=os.getenv('DB_TEST_USERNAME_2')
                 )
             }'},
-            params={'request_id': self.friend_request_id}
+            params={'relation_id': self.friend_request_id}
         )
         assert response.status_code == 200
 
     def test_remove_friend(self):
         self.test_accept_request()
         response = self.client.post(
-            '/api/remove_friend',
+            '/api/friend_relation_remove',
             headers={'Authorization': f'Bearer {
                 create_test_token(
                     user_id=os.getenv('DB_TEST_ID_1'), 
                     username=os.getenv('DB_TEST_USERNAME_1')
                 )
             }'},
-            params={'friend_id': os.getenv('DB_TEST_ID_2')}
+            params={'relation_id': self.friend_request_id}
         )
         assert response.status_code == 200
 
@@ -167,6 +181,7 @@ class TestClass(unittest.TestCase):
                 )
             }'},
         )
+        print(response.json())
         assert response.status_code == 200
 
     def test_search_users(self):
@@ -182,6 +197,7 @@ class TestClass(unittest.TestCase):
             }'},
             params={'query': os.getenv('DB_TEST_USERNAME_2')}
         )
+        print(response.json())
         assert response.status_code == 200
 
     def test_get_my_profile(self):
