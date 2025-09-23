@@ -59,7 +59,7 @@ class TestClass(unittest.TestCase):
         response = (
             supabase_client.table('relationships')
             .delete()
-            .eq('sender_id', os.getenv('DB_TEST_ID_1'))
+            .eq('id_1', os.getenv('DB_TEST_ID_1'))
             .execute()
         )
         response = (
@@ -181,7 +181,6 @@ class TestClass(unittest.TestCase):
                 )
             }'},
         )
-        print(response.json())
         assert response.status_code == 200
 
     def test_search_users(self):
@@ -197,7 +196,6 @@ class TestClass(unittest.TestCase):
             }'},
             params={'query': os.getenv('DB_TEST_USERNAME_2')}
         )
-        print(response.json())
         assert response.status_code == 200
 
     def test_get_my_profile(self):

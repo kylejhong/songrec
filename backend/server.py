@@ -185,22 +185,24 @@ async def send_friend_request(
         if not receiver.data:
             raise HTTPException(status_code=404, detail='Receiver not found') 
         
+        id_1, id_2 = sorted([current_user.id, receiver_id])
+        
         existing_request = (
             supabase_client.table('relationships')
             .select('id')
-            .eq('sender_id', current_user.id)
-            .eq('receiver_id', receiver_id)
+            .eq('id_1', id_1)
+            .eq('id_2', id_2)
             .execute()
-        ) # maybe write code to check for the flip of sender and receiver? --------------------
+        )
         if existing_request.data:
             raise HTTPException(status_code=400, detail='Friend request already sent')
         
         new_request = (
             supabase_client.table('relationships')
             .insert({
-                'sender_id': current_user.id,
-                'receiver_id': receiver_id,
-                'status': 'pending'
+                'id_1': id_1,
+                'id_2': id_2,
+                'status': (1 if current_user.id == id_1 else 2)
             })
             .execute()
         )
@@ -251,7 +253,7 @@ async def friend_relation_update(
             case 'accept':
                 accepted_request = (
                     supabase_client.table('relationships')
-                    .update({'status': 'accepted'})
+                    .update({'status': 3})
                     .eq('id', relation_id)
                     .execute()
                 )
@@ -342,37 +344,63 @@ async def collect_requests(
         HTTPException: If the api request has a invalid request_type or if 0 requests found
     '''
     try:
-        # ---------------------------------------------- request_status --------------------------------
-        # None
-        # Friended
-        # Outgoing
-        # Incoming
 
         match request_type:
             case 'outgoing':
-                gather, equal = 'receiver_id', 'sender_id'
+                gather = [1, 2]
             case 'incoming':
-                gather, equal = 'sender_id', 'receiver_id'
+                gather = [1, 2]
+            case 'friends':
+                gather = 3
             case _:
                 raise HTTPException(status_code=404, detail='Collection request has an invalid parameter type')
 
         friend_ids = (
             supabase_client.table('relationships')
             .select(f'''
-                id:{gather},
+                request_id:id,
                 status,
-                profiles!relationships_{gather}_fkey(
+                id_1:profiles!relationships_id_1_fkey(
                     username,
-                    pfp_url
+                    pfp_url,
+                    id
+                ),
+                id_2:profiles!relationships_id_2_fkey(
+                    username,
+                    pfp_url,
+                    id
                 )
             ''')
-            .eq(equal, current_user.id)
+            .or_(f'id_1.eq.{current_user.id},id_2.eq.{current_user.id}')
             .execute()
         )
         if friend_ids.data == None:
             raise HTTPException(status_code=404, detail='Zero requests found')
 
-        return friend_ids.data
+        filtered_relationships = []
+
+        user_objects = []
+        for relationship in friend_ids.data:
+
+            if relationship['id_1']['id'] == current_user.id:
+                other_user = relationship['id_2']
+                other_user_id = 'id_2'
+            else:
+                other_user = relationship['id_1']
+                other_user_id = 'id_1'
+                relationship['status'] = 3 - relationship['status']
+
+            if relationship['status'] == gather:
+                continue
+            
+            user_objects.append({
+                'id': other_user['id'],  
+                'username': other_user['username'],
+                'pfp_url': other_user['pfp_url'],
+                'request_id': relationship['request_id']
+            })
+
+        return user_objects
 
     except HTTPException:
         raise
@@ -421,35 +449,52 @@ async def search_users(
         if search_query.data == None: 
             raise HTTPException(status_code=404, detail='Search returned zero results')
 
-        user_ids = [user['id'] for user in search_query.data]
-        user_ids.append(current_user.id)
+        or_conditions = []
+        for user_id in search_query.data:
+            id_1, id_2 = sorted([current_user.id, user_id['id']])
+            or_conditions.append(f'and(id_1.eq.{id_1},id_2.eq.{id_2})')
 
         relationships_query = (
             supabase_client.table('relationships')
             .select('*')
-            .in_('sender_id', user_ids)
-            .in_('receiver_id', user_ids)
+            .or_(','.join(or_conditions))
             .execute()
         )
 
-        # maybe worth switching from str to int relations? then to the lower uid on left and right column thing?
-            # maybe not since we have to look through the recieverid and senderid columns anyway for this sh*t. 
-        # instead of searching for the relations of the searched user, search the relations between the ACTUAL CURRENT USER
-        relationships_map = {}
-        for rel in relationships_query.data:
-            key = (rel['sender_id'], rel['receiver_id'])
-            relationships_map[key] = rel
+        # The code in the next 30 lines is gonna give me a seizure, but I just need this to work for now and I will change it ltr.
+        relationships_dict = {}
+        for relationship in relationships_query.data:
+            if relationship['id_1'] == current_user.id:
+                other_user_id = relationship['id_2']
+                relationships_dict[other_user_id] = [relationship['id'], relationship['status']]
+            else:
+                other_user_id = relationship['id_1']
+                relationships_dict[other_user_id] = [relationship['id'], 3 - relationship['status']]
 
-        for user in search_query.data:
-            user_id = user['id']
-            relationship = (relationships_map.get((current_user.id, user_id)) or 
-                           relationships_map.get((user_id, current_user.id)))
-            user['relationship_status'] = relationship['status'] if relationship else None
+        users_with_relationships = []
+        for user_data in search_query.data:
+            status = relationships_dict.get(user_data['id'], 0)
+            if status:
+                status = status[1] # :sob:
 
-        #for user in search_query.data:
+            match status:
+                case 1:
+                    status_str = 'Outgoing'
+                case 2:
+                    status_str = 'Incoming'
+                case 3:
+                    status_str = 'Friended'
+                case _:
+                    status_str = 'None'
+            
+            user_with_status = {
+                **user_data,
+                'relationship_status': status_str
+            }
+            users_with_relationships.append(user_with_status)
 
         return {
-            'results': search_query.data,
+            'results': users_with_relationships,
             'total_count': len(search_query.data),
             'has_more': len(search_query.data) == limit
         }
