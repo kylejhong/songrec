@@ -120,7 +120,7 @@ async def get_current_user(
             get_public_key(),
             algorithms=['ES256'],
             audience='authenticated',
-            issuer='https://nqzgjbhzoosakyyelwzs.supabase.co/auth/v1'   
+            issuer='https://nqzgjbhzoosakyyelwzs.supabase.co/auth/v1'
         )
 
         user_id = payload.get('sub') 
@@ -347,9 +347,9 @@ async def collect_requests(
 
         match request_type:
             case 'outgoing':
-                gather = [1, 2]
+                gather = 1
             case 'incoming':
-                gather = [1, 2]
+                gather = 2
             case 'friends':
                 gather = 3
             case _:
@@ -390,7 +390,7 @@ async def collect_requests(
                 other_user_id = 'id_1'
                 relationship['status'] = 3 - relationship['status']
 
-            if relationship['status'] == gather:
+            if relationship['status'] != gather:
                 continue
             
             user_objects.append({

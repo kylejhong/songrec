@@ -168,6 +168,7 @@ class TestClass(unittest.TestCase):
                 )
             }'},
         )
+        print(response.json())
         assert response.status_code == 200
 
     def test_collect_incoming(self):
@@ -181,6 +182,7 @@ class TestClass(unittest.TestCase):
                 )
             }'},
         )
+        print(response.json())
         assert response.status_code == 200
 
     def test_search_users(self):
