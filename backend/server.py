@@ -412,7 +412,7 @@ async def collect_requests(
 @limiter.limit('20/minute')
 async def search_users(
     request: Request,
-    query: str = Query(..., min_length=1, max_length=50),
+    query: str = Query(..., min_length=0, max_length=50),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     current_user: User = Depends(get_current_user)
