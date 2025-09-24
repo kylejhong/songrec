@@ -278,7 +278,7 @@ async def friend_relation_update(
         raise HTTPException(status_code=500, detail=f'Friend request update failed: {str(e)}')
 
 
-@app.get('/api/update_username/')
+@app.post('/api/update_username/')
 @limiter.limit('20/minute')
 async def update_username(
     request: Request,

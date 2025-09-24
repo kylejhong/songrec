@@ -211,7 +211,7 @@ class TestClass(unittest.TestCase):
         assert response.status_code == 200
 
     def test_update_username(self):
-        response = self.client.get(
+        response = self.client.post(
             '/api/update_username',
             headers={'Authorization': f'Bearer {
                 create_test_token(
