@@ -1,9 +1,4 @@
-# Depreceated List:
-# /friend_request --> /api/friend_request
-# /collect_user --> /api/get_my_profile
-# supabase key 
-
-# to-do:
+# To-Do:
 # logging
 
 import os
@@ -207,19 +202,20 @@ async def send_friend_request(
             .execute()
         )
         
-        return {'message': 'Friend request sent', 'relation_id': new_request.data[0]['id']} 
+        return {'message': 'Friend request sent', 'relationship_id': new_request.data[0]['id']} 
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f'Friend request failed: {str(e)}') # remove error messages from sending to front-end
+        print(f'Friend request failed: {str(e)}')
+        raise HTTPException(status_code=500, detail=f'Friend request failed.') # remove error messages from sending to front-end
 
 
 @app.post('/api/friend_relation_{status}')
 @limiter.limit('20/minute')
 async def friend_relation_update(
     request: Request,
-    relation_id: str,
+    relationship_id: str,
     status: str,
     current_user: User = Depends(get_current_user)
 ):
@@ -228,7 +224,7 @@ async def friend_relation_update(
 
     Args:
         request (Request): Required for the SlowApi rate limiter to hook into it.
-        relation_id (str): UID of friend request in DB.
+        relationship_id (str): UID of friend request in DB.
         status (str): The status the friend request should be changed to passed in the API call.
         current_user (User): Authenticated User class of user receiving the request.
 
@@ -241,9 +237,9 @@ async def friend_relation_update(
     try:
         request = (
             supabase_client.table('relationships')
-            .select('*')
-            .eq('id', relation_id) # ------------------------------- check documentation to see if i can just remove the .select()
-            .limit(1) # ------------------- limit(1) or .single()? ------------------------
+            .select('id', count='exact')
+            .eq('id', relationship_id)
+            .single()
             .execute()
         )
         if not request.data:
@@ -254,23 +250,23 @@ async def friend_relation_update(
                 accepted_request = (
                     supabase_client.table('relationships')
                     .update({'status': 3})
-                    .eq('id', relation_id)
+                    .eq('id', relationship_id)
                     .execute()
                 )
             case 'reject':
                 reject_request = (
                     supabase_client.table('relationships')
                     .delete()
-                    .eq('id', relation_id)
+                    .eq('id', relationship_id)
                     .execute()
                 )
             case 'remove':
                 reject_request = (
                     supabase_client.table('relationships')
                     .delete()
-                    .eq('id', relation_id)
+                    .eq('id', relationship_id)
                     .execute()
-                ) # -------------------- add description part for removing friend
+                ) 
             case _:
                 raise HTTPException(status_code=404, detail='Friend request update has an invalid parameter type')
         
@@ -358,7 +354,7 @@ async def collect_requests(
         friend_ids = (
             supabase_client.table('relationships')
             .select(f'''
-                request_id:id,
+                relationship_id:id,
                 status,
                 id_1:profiles!relationships_id_1_fkey(
                     username,
@@ -397,7 +393,7 @@ async def collect_requests(
                 'id': other_user['id'],  
                 'username': other_user['username'],
                 'pfp_url': other_user['pfp_url'],
-                'request_id': relationship['request_id']
+                'relationship_id': relationship['relationship_id']
             })
 
         return user_objects
@@ -434,12 +430,12 @@ async def search_users(
     '''
     try:
         search_query = (
-            supabase_client.table('profiles') # --------------------------------------- return request status per user
+            supabase_client.table('profiles')
             .select(f''' 
                 id,
                 username,
                 pfp_url
-            ''') # --------------------------- pass in request id as well
+            ''') 
             .or_(f'username.ilike.%{query}%')
             .order('username')
             .limit(limit)
@@ -504,10 +500,28 @@ async def search_users(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f'Search failed: {str(e)}')
 
-# PUT IN AUTH HERE -------------------------------------------------------------------------------------
-@app.get('/api/get_song')
-async def get_song(song_url):
 
+@app.get('/api/get_song')
+@limiter.limit('20/minute')
+async def get_song(
+    request: Request,
+    song_url: str,
+    current_user: User = Depends(get_current_user)
+) -> dict:
+    '''
+    Gets relevant song information based on URL.
+
+    Args:
+        request (Request): Required for the SlowApi rate limiter to hook into it.
+        song_url (str): Spotify url to check.
+        current_user (User): Authenticated User class of user receiving the request.
+
+    Returns:
+        dict: Status of operation.
+
+    Raises:
+        HTTPException: If the api request has a invalid request_type or if 0 requests found
+    '''
     song_preview = None
     spotify_song_id = None
     deezer_song_id = None

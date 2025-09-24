@@ -103,7 +103,7 @@ class TestClass(unittest.TestCase):
             headers={'Authorization': f'Bearer {create_test_token()}'},
             params={'receiver_id': os.getenv('DB_TEST_ID_2')}
         )
-        self.friend_request_id = response.json()['relation_id']
+        self.friend_request_id = response.json()['relationship_id']
         assert response.status_code == 200
 
     def test_already_requested(self):
@@ -125,7 +125,7 @@ class TestClass(unittest.TestCase):
                     username=os.getenv('DB_TEST_USERNAME_2')
                 )
             }'},
-            params={'relation_id': self.friend_request_id} # 9/8/25 trying to fix this mess, turns out unit testing and integration testing have different names for a reason. unit test the song logic, integration test the user stuff. Currently adjusting each function to run somewhat independantly (supabase logic, then api call. rinse and repeat)
+            params={'relationship_id': self.friend_request_id} # 9/8/25 trying to fix this mess, turns out unit testing and integration testing have different names for a reason. unit test the song logic, integration test the user stuff. Currently adjusting each function to run somewhat independantly (supabase logic, then api call. rinse and repeat)
         )
         assert response.status_code == 200
 
@@ -139,7 +139,7 @@ class TestClass(unittest.TestCase):
                     username=os.getenv('DB_TEST_USERNAME_2')
                 )
             }'},
-            params={'relation_id': self.friend_request_id}
+            params={'relationship_id': self.friend_request_id}
         )
         assert response.status_code == 200
 
@@ -153,7 +153,7 @@ class TestClass(unittest.TestCase):
                     username=os.getenv('DB_TEST_USERNAME_1')
                 )
             }'},
-            params={'relation_id': self.friend_request_id}
+            params={'relationship_id': self.friend_request_id}
         )
         assert response.status_code == 200
 
@@ -168,7 +168,6 @@ class TestClass(unittest.TestCase):
                 )
             }'},
         )
-        print(response.json())
         assert response.status_code == 200
 
     def test_collect_incoming(self):
@@ -182,7 +181,6 @@ class TestClass(unittest.TestCase):
                 )
             }'},
         )
-        print(response.json())
         assert response.status_code == 200
 
     def test_search_users(self):
